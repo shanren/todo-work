@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn corrupt_json_recovers_from_backup() {
         let dir = tmpdir("corrupt");
-        let mut s = State::default();
+        let s = State::default();
         s.save(&dir).unwrap();
         // 备份链滚动后 store.json 为损坏内容，.1 为良好副本
         let good = fs::read(dir.join("store.json")).unwrap();
@@ -202,8 +202,10 @@ mod tests {
     fn rolling_backup_keeps_five() {
         let dir = tmpdir("rolling");
         for i in 0..9 {
-            let mut s = State::default();
-            s.version = i; // 内容变化触发新备份
+            let s = State {
+                version: i, // 内容变化触发新备份
+                ..State::default()
+            };
             s.save(&dir).unwrap();
         }
         let mut n = 0;
