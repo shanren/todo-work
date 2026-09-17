@@ -645,3 +645,27 @@ body {
 .switch.on .switch-knob {
   left: 19px;
 }
+
+/* ===== Task 11：条目到期日控件（点击修改/清除） ===== */
+.it-due {
+  cursor: pointer;
+  padding: 1px 5px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.it-due:hover {
+  background: var(--hover);
+}
+.it-due.over:hover {
+  background: rgba(229, 72, 77, 0.12);
+}
+.it-due-none {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.item:hover .it-due-none {
+  opacity: 0.55;
+}
+.it-due-none:hover {
+  opacity: 1 !important;
+}

@@ -15,7 +15,6 @@ import type { AppState, Category, Todo } from "./types";
 import { bindDragAndDrop } from "./drag";
 import { collapseWindow, listenEvent } from "./bridge";
 import { openSettingsPanel } from "./settings";
-import { openSortMenu } from "./sortMenu";
 
 // localTodayISO 已收编至 state.ts（drag.ts 亦需使用）；此处保留导出兼容旧引用
 export { localTodayISO };
@@ -192,9 +191,18 @@ function metaEl(
   if (cat) {
     meta.append(h("span", "", cat.name));
   }
-  const due = fmtDue(todo, today);
-  if (due) {
-    meta.append(h("span", due.over ? "over" : "", due.text));
+  // 日期控件：有日期显示摘要，无日期 hover 显示「＋日」；点击弹出日期面板修改/清除
+  if (!todo.done) {
+    const due = fmtDue(todo, today);
+    let cls = "it-due it-due-none";
+    let text = "＋日";
+    if (due) {
+      cls = due.over ? "it-due over" : "it-due";
+      text = due.text;
+    }
+    const el = h("span", cls, text);
+    el.title = "点击修改到期日";
+    meta.append(el);
   }
   return meta.childNodes.length === 0 ? null : meta;
 }
@@ -472,6 +480,15 @@ function bindListEvents(store: Store, refresh: () => void): void {
     }
     if (target.closest(".it-del")) {
       onDelete(todo, store, refresh);
+      return;
+    }
+    if (target.closest(".it-due")) {
+      openDatePopup(target as HTMLElement, todo.dueDate, (v) => {
+        store
+          .updateTodo(todo.id, { dueDate: v })
+          .then(refresh)
+          .catch(refresh);
+      });
       return;
     }
     if (target.closest(".it-title")) {
@@ -764,6 +781,59 @@ function dueLabel(iso: string): string {
   return `${m}/${d}`;
 }
 
+/** 日期选择面板（添加栏与条目修改共用）：无日期/今天/明天/本周末/自定义。 */
+function openDatePopup(
+  anchor: HTMLElement,
+  current: string | null,
+  onPick: (iso: string | null) => void,
+): void {
+  if (popupEl) {
+    closePopup();
+    return;
+  }
+  openPopup(anchor, (popup, close) => {
+    popup.classList.add("popup-date");
+    const opts: { text: string; value: string | null }[] = [
+      { text: "无日期", value: null },
+      { text: "今天", value: localTodayISO() },
+      { text: "明天", value: tomorrowISO() },
+      { text: "本周末", value: nextSaturdayISO(localTodayISO()) },
+    ];
+    for (const o of opts) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "menu-item";
+      b.textContent = o.text;
+      b.addEventListener("click", () => {
+        onPick(o.value);
+        close();
+      });
+      popup.append(b);
+    }
+    const custom = document.createElement("button");
+    custom.type = "button";
+    custom.className = "menu-item";
+    custom.textContent = "自定义…";
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.className = "date-native";
+    if (current) {
+      dateInput.value = current;
+    }
+    custom.addEventListener("click", () => {
+      custom.replaceWith(dateInput);
+      dateInput.focus();
+    });
+    dateInput.addEventListener("change", () => {
+      if (dateInput.value && isValidISODate(dateInput.value)) {
+        onPick(dateInput.value);
+      }
+      close();
+    });
+    popup.append(custom);
+  });
+}
+
 function bindAddBar(store: Store, refresh: () => void): void {
   const addInput = document.querySelector<HTMLInputElement>("#add-input");
   const dateBtn = document.querySelector<HTMLButtonElement>("#btn-date");
@@ -771,49 +841,9 @@ function bindAddBar(store: Store, refresh: () => void): void {
     return;
   }
   dateBtn.addEventListener("click", () => {
-    if (popupEl) {
-      closePopup();
-      return;
-    }
-    openPopup(dateBtn, (popup, close) => {
-      popup.classList.add("popup-date");
-      const opts: { text: string; value: string | null }[] = [
-        { text: "无日期", value: null },
-        { text: "今天", value: localTodayISO() },
-        { text: "明天", value: tomorrowISO() },
-        { text: "本周末", value: nextSaturdayISO(localTodayISO()) },
-      ];
-      for (const o of opts) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "menu-item";
-        b.textContent = o.text;
-        b.addEventListener("click", () => {
-          selectedDueDate = o.value;
-          dateBtn.textContent = o.value === null ? "日" : dueLabel(o.value);
-          close();
-        });
-        popup.append(b);
-      }
-      const custom = document.createElement("button");
-      custom.type = "button";
-      custom.className = "menu-item";
-      custom.textContent = "自定义…";
-      const dateInput = document.createElement("input");
-      dateInput.type = "date";
-      dateInput.className = "date-native";
-      custom.addEventListener("click", () => {
-        custom.replaceWith(dateInput);
-        dateInput.focus();
-      });
-      dateInput.addEventListener("change", () => {
-        if (dateInput.value && isValidISODate(dateInput.value)) {
-          selectedDueDate = dateInput.value;
-          dateBtn.textContent = dueLabel(selectedDueDate);
-        }
-        close();
-      });
-      popup.append(custom);
+    openDatePopup(dateBtn, selectedDueDate, (v) => {
+      selectedDueDate = v;
+      dateBtn.textContent = v === null ? "日" : dueLabel(v);
     });
   });
   addInput.addEventListener("keydown", (e) => {
@@ -896,12 +926,8 @@ export function initApp(store: Store): void {
       openSettingsPanel(anchor, store, refresh);
     }
   });
-  document.getElementById("btn-sort")?.addEventListener("click", () => {
-    const anchor = document.getElementById("btn-sort");
-    if (anchor) {
-      openSortMenu(anchor, store, refresh);
-    }
-  });
+  // 禁用 WebView 默认右键菜单（刷新/检查等）；chips 的自定义右键菜单在捕获前已自行 preventDefault 并打开
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
   render(store.state);
 }
 
