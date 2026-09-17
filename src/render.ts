@@ -766,7 +766,9 @@ function bindCollapseControls(): void {
       doCollapse();
     }
   });
-  document.getElementById("btn-collapse")?.addEventListener("click", doCollapse);
+  document
+    .getElementById("btn-collapse")
+    ?.addEventListener("click", doCollapse);
   const head = document.querySelector<HTMLElement>(".w-head");
   head?.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
