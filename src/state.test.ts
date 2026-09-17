@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   activeCategoryAfterDelete,
   buckets,
+  nextSaturdayISO,
   sortTodos,
   Store,
 } from "./state";
@@ -536,3 +537,12 @@ function baseSettings(): AppState["settings"] {
     showOnBootOnlyToday: true,
   };
 }
+
+describe("nextSaturdayISO（本周末快捷项）", () => {
+  it("周三 → 本周六", () =>
+    expect(nextSaturdayISO("2026-09-16")).toBe("2026-09-19"));
+  it("周六当天 → 当天", () =>
+    expect(nextSaturdayISO("2026-09-19")).toBe("2026-09-19"));
+  it("周日 → 下周六", () =>
+    expect(nextSaturdayISO("2026-09-20")).toBe("2026-09-26"));
+});

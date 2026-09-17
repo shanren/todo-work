@@ -6,6 +6,7 @@ import {
   buckets,
   isValidISODate,
   localTodayISO,
+  nextSaturdayISO,
   sortTodos,
   type Bucket,
   type Store,
@@ -733,11 +734,88 @@ function bindChips(store: Store, refresh: () => void): void {
   });
 }
 
+/** 添加栏当前选中的到期日（null = 无日期）。选中后面板摘要显示在触发钮上。 */
+let selectedDueDate: string | null = null;
+
+/** 日期摘要：今天 / 明天 / M/D。 */
+function tomorrowISO(): string {
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  const y = t.getFullYear();
+  const m = String(t.getMonth() + 1).padStart(2, "0");
+  const d = String(t.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function dueLabel(iso: string): string {
+  const today = localTodayISO();
+  if (iso === today) {
+    return "今天";
+  }
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = new Date(y, m - 1, d);
+  t.setDate(t.getDate() - 1);
+  const ty = t.getFullYear();
+  const tm = String(t.getMonth() + 1).padStart(2, "0");
+  const td = String(t.getDate()).padStart(2, "0");
+  if (`${ty}-${tm}-${td}` === today) {
+    return "明天";
+  }
+  return `${m}/${d}`;
+}
+
 function bindAddBar(store: Store, refresh: () => void): void {
   const addInput = document.querySelector<HTMLInputElement>("#add-input");
-  if (!addInput) {
+  const dateBtn = document.querySelector<HTMLButtonElement>("#btn-date");
+  if (!addInput || !dateBtn) {
     return;
   }
+  dateBtn.addEventListener("click", () => {
+    if (popupEl) {
+      closePopup();
+      return;
+    }
+    openPopup(dateBtn, (popup, close) => {
+      popup.classList.add("popup-date");
+      const opts: { text: string; value: string | null }[] = [
+        { text: "无日期", value: null },
+        { text: "今天", value: localTodayISO() },
+        { text: "明天", value: tomorrowISO() },
+        { text: "本周末", value: nextSaturdayISO(localTodayISO()) },
+      ];
+      for (const o of opts) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "menu-item";
+        b.textContent = o.text;
+        b.addEventListener("click", () => {
+          selectedDueDate = o.value;
+          dateBtn.textContent = o.value === null ? "日" : dueLabel(o.value);
+          close();
+        });
+        popup.append(b);
+      }
+      const custom = document.createElement("button");
+      custom.type = "button";
+      custom.className = "menu-item";
+      custom.textContent = "自定义…";
+      const dateInput = document.createElement("input");
+      dateInput.type = "date";
+      dateInput.className = "date-native";
+      custom.addEventListener("click", () => {
+        custom.replaceWith(dateInput);
+        dateInput.focus();
+      });
+      dateInput.addEventListener("change", () => {
+        if (dateInput.value && isValidISODate(dateInput.value)) {
+          selectedDueDate = dateInput.value;
+          dateBtn.textContent = dueLabel(selectedDueDate);
+        }
+        close();
+      });
+      popup.append(custom);
+    });
+  });
   addInput.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") {
       return;
@@ -747,9 +825,11 @@ function bindAddBar(store: Store, refresh: () => void): void {
       return;
     }
     store
-      .addTodo(crypto.randomUUID(), title, activeCategoryId, null, null)
+      .addTodo(crypto.randomUUID(), title, activeCategoryId, selectedDueDate, null)
       .then(() => {
         addInput.value = "";
+        selectedDueDate = null;
+        dateBtn.textContent = "日";
         refresh();
       })
       .catch(refresh);
@@ -757,7 +837,7 @@ function bindAddBar(store: Store, refresh: () => void): void {
 }
 
 /** 装配交互与首渲染。main.ts 在状态加载完成后调用一次。 */
-/** 收起控制：Esc / 页脚「收起」/ 头部空白点击（⚙ ⛶ 除外）。Rust 侧销毁窗口。 */
+/** 收起控制：Esc / 页脚「收起」/ 头部「—」。头部其余区域是拖动区，不触发收起。 */
 function bindCollapseControls(): void {
   const doCollapse = () => {
     collapseWindow().catch(() => undefined);
@@ -770,13 +850,9 @@ function bindCollapseControls(): void {
   document
     .getElementById("btn-collapse")
     ?.addEventListener("click", doCollapse);
-  const head = document.querySelector<HTMLElement>(".w-head");
-  head?.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement;
-    if (!t.closest("#btn-settings") && !t.closest("#btn-sort")) {
-      doCollapse();
-    }
-  });
+  document
+    .getElementById("btn-collapse-top")
+    ?.addEventListener("click", doCollapse);
 }
 
 /** Rust 事件：state-changed（托盘/重建后同步）、focus-add、open-settings */

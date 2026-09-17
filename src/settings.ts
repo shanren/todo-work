@@ -1,70 +1,74 @@
-// 设置面板（Task 9）：⚙ 弹层。主题/宽度即时生效；失焦自动收起仅持久化（监听在 Task 10）。
+// 设置面板（Task 11 重做）：卡片式行布局 + 分段按钮 + 拟物开关。
+// 全部样式只消费 CSS 变量（themes.css），三主题下成立。
 import type { Store } from "./state";
 import type { ThemeMode } from "./types";
 import { applyTheme } from "./themes";
 import { resizeWindowTo } from "./bridge";
 import { openPopup } from "./render";
 
-interface RowSpec<T extends string | number> {
-  label: string;
-  options: { value: T; text: string }[];
-  current: T;
-  onPick: (v: T) => void;
+/** 一行：左标签 + 右控件区。 */
+function row(popup: HTMLElement, label: string): { ctrl: HTMLDivElement } {
+  const el = document.createElement("div");
+  el.className = "set-row";
+  const l = document.createElement("span");
+  l.className = "set-label";
+  l.textContent = label;
+  const ctrl = document.createElement("div");
+  ctrl.className = "set-ctrl";
+  el.append(l, ctrl);
+  popup.append(el);
+  return { ctrl };
 }
 
-function buildRow<T extends string | number>(
-  popup: HTMLElement,
-  spec: RowSpec<T>,
+/** 分段按钮组（单选，选中即回调）。 */
+function segmented<T extends string | number>(
+  ctrl: HTMLDivElement,
+  options: { value: T; text: string }[],
+  current: T,
+  onPick: (v: T) => void,
 ): void {
-  const row = document.createElement("div");
-  row.className = "popup-row";
-  const label = document.createElement("div");
-  label.className = "popup-label";
-  label.textContent = spec.label;
-  const opts = document.createElement("div");
-  opts.className = "popup-opts";
-  for (const o of spec.options) {
+  const seg = document.createElement("div");
+  seg.className = "seg";
+  for (const o of options) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = o.value === spec.current ? "popup-opt on" : "popup-opt";
+    btn.className = o.value === current ? "seg-opt on" : "seg-opt";
     btn.textContent = o.text;
     btn.addEventListener("click", () => {
-      opts
-        .querySelectorAll(".popup-opt")
-        .forEach((el) => el.classList.remove("on"));
+      seg.querySelectorAll(".seg-opt").forEach((el) => el.classList.remove("on"));
       btn.classList.add("on");
-      spec.onPick(o.value);
+      onPick(o.value);
     });
-    opts.append(btn);
+    seg.append(btn);
   }
-  row.append(label, opts);
-  popup.append(row);
+  ctrl.append(seg);
 }
 
-function buildSwitch(
-  popup: HTMLElement,
+/** 拟物 toggle 开关。 */
+function toggle(
+  ctrl: HTMLDivElement,
   label: string,
   current: boolean,
   onToggle: (v: boolean) => void,
 ): void {
-  const row = document.createElement("div");
-  row.className = "popup-row";
+  const wrap = document.createElement("label");
+  wrap.className = "switch-wrap";
   const text = document.createElement("span");
-  text.className = "popup-label";
+  text.className = "switch-text";
   text.textContent = label;
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = current ? "popup-opt on" : "popup-opt";
-  btn.textContent = current ? "开" : "关";
-  btn.addEventListener("click", () => {
-    const next = !current;
-    btn.classList.toggle("on", next);
-    btn.textContent = next ? "开" : "关";
-    current = next;
-    onToggle(next);
+  const sw = document.createElement("span");
+  sw.className = current ? "switch on" : "switch";
+  const knob = document.createElement("span");
+  knob.className = "switch-knob";
+  sw.append(knob);
+  sw.addEventListener("click", (e) => {
+    e.preventDefault();
+    current = !current;
+    sw.classList.toggle("on", current);
+    onToggle(current);
   });
-  row.append(text, btn);
-  popup.append(row);
+  wrap.append(text, sw);
+  ctrl.append(wrap);
 }
 
 /** ⚙ 设置面板入口（头部按钮与 open-settings 事件共用）。 */
@@ -77,55 +81,52 @@ export function openSettingsPanel(
     popup.classList.add("popup-settings");
     const s = store.state.settings;
 
-    buildRow<ThemeMode>(popup, {
-      label: "主题",
-      current: s.theme,
-      options: [
-        { value: "system", text: "跟随系统" },
-        { value: "glass", text: "毛玻璃" },
-        { value: "paper", text: "纸感" },
-        { value: "dark", text: "暗夜" },
-      ],
-      onPick: (theme) => {
-        store
-          .setSettings({ theme })
-          .then((st) => {
-            applyTheme(st.theme);
-            refresh();
-          })
-          .catch(refresh);
-      },
+    // 头部：标题 + ✕
+    const head = document.createElement("div");
+    head.className = "set-head";
+    const title = document.createElement("span");
+    title.textContent = "设置";
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "set-close";
+    x.textContent = "✕";
+    x.addEventListener("click", () => close());
+    head.append(title, x);
+    popup.append(head);
+
+    segmented<ThemeMode>(row(popup, "主题").ctrl, [
+      { value: "system", text: "系统" },
+      { value: "glass", text: "毛玻璃" },
+      { value: "paper", text: "纸感" },
+      { value: "dark", text: "暗夜" },
+    ], s.theme, (theme) => {
+      store
+        .setSettings({ theme })
+        .then((st) => {
+          applyTheme(st.theme);
+          refresh();
+        })
+        .catch(refresh);
     });
 
-    buildRow<number>(popup, {
-      label: "宽度",
-      current: s.width,
-      options: [
-        { value: 300, text: "紧凑" },
-        { value: 340, text: "标准" },
-        { value: 380, text: "宽松" },
-      ],
-      onPick: (width) => {
-        store
-          .setSettings({ width })
-          .then(() => resizeWindowTo(width).catch(refresh))
-          .then(refresh)
-          .catch(refresh);
-      },
+    segmented<number>(row(popup, "宽度").ctrl, [
+      { value: 300, text: "紧凑" },
+      { value: 340, text: "标准" },
+      { value: 380, text: "宽松" },
+    ], s.width, (width) => {
+      store
+        .setSettings({ width })
+        .then(() => resizeWindowTo(width).catch(refresh))
+        .then(refresh)
+        .catch(refresh);
     });
 
-    buildSwitch(popup, "开机自启", s.autoStart, (v) => {
+    toggle(row(popup, "开机自启").ctrl, "登录时静默启动", s.autoStart, (v) => {
       store.setSettings({ autoStart: v }).then(refresh).catch(refresh);
     });
 
-    buildSwitch(popup, "失焦 5 分钟后自动收起", s.autoCollapse, (v) => {
+    toggle(row(popup, "失焦自动收起").ctrl, "失焦 5 分钟后收起到托盘", s.autoCollapse, (v) => {
       store.setSettings({ autoCollapse: v }).then(refresh).catch(refresh);
     });
-
-    const hint = document.createElement("div");
-    hint.className = "popup-label";
-    hint.textContent = "Esc / 点头部空白可收起到托盘";
-    popup.append(hint);
-    void close;
   });
 }

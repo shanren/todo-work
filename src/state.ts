@@ -12,6 +12,18 @@ export function localTodayISO(now = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/** 下一个即将到来的周六（含今天若是周六）的 ISO 日期。用于「本周末」快捷项。 */
+export function nextSaturdayISO(today: string): string {
+  const [y, m, d] = today.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const add = (6 - date.getDay() + 7) % 7;
+  date.setDate(date.getDate() + add);
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
 /** 删除分类后的选中态回退：被删分类正被选中 → 回"全部"（null），否则保持 */
 export function activeCategoryAfterDelete(
   active: string | null,
