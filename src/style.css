@@ -194,7 +194,7 @@ body {
   color: var(--over);
 }
 
-/* ===== 添加栏 ===== */
+/* ===== 添加栏（Task 7：真实输入框） ===== */
 .add {
   display: flex;
   align-items: center;
@@ -208,6 +208,39 @@ body {
   background: var(--add-bg);
   border: var(--add-border);
   flex-shrink: 0;
+}
+.add::placeholder {
+  color: inherit;
+  opacity: 0.9;
+}
+#add-input {
+  width: 100%;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  user-select: text;
+  transition: opacity 0.15s;
+}
+#add-input:focus {
+  opacity: 1;
+}
+#add-input:focus::placeholder {
+  opacity: 0.5;
+}
+
+/* ===== 行内编辑（Task 7） ===== */
+.it-edit {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid currentColor;
+  outline: none;
+  padding: 0 0 1px;
+  user-select: text;
 }
 
 /* ===== 页脚 ===== */
@@ -233,7 +266,7 @@ body {
   background: var(--done);
 }
 
-/* ===== toast（Task 7 起使用） ===== */
+/* ===== toast（Task 7：删除撤销，5s 进度条淡出） ===== */
 .toast {
   position: absolute;
   bottom: 44px;
@@ -247,7 +280,31 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
+  overflow: hidden;
 }
 .toast.show {
   opacity: 0.92;
+}
+.toast-undo {
+  pointer-events: auto;
+  margin-left: 10px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.toast-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  opacity: 0.4;
+  pointer-events: none;
+  transition: width 5s linear;
 }

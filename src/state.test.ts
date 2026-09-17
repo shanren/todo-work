@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { buckets, sortTodos, Store } from "./state";
+import { fmtDue } from "./render";
 import type { AppState, Todo } from "./types";
 
 const TODAY = "2026-09-17";
@@ -199,4 +200,154 @@ describe("Store（乐观更新 + 失败回滚，fake invoke）", () => {
     expect(store.state.todos.find((t) => t.id === "a")?.order).toBe(1);
     expect(invoke).toHaveBeenCalledWith("reorder", { ids: ["b", "a"] });
   });
+});
+
+describe("toggleTodo（Task 7：doneAt 记录与清空）", () => {
+  // 模块级空状态（Store describe 内的 emptyState 局部于此不可见）
+  const blankState = (): AppState => ({
+    version: 1,
+    categories: [],
+    todos: [],
+    settings: {
+      theme: "glass",
+      width: 340,
+      posX: null,
+      posY: null,
+      autoStart: true,
+      sortMode: "manual" as const,
+      showOnBootOnlyToday: true,
+    },
+  });
+
+  it("完成后 doneAt 记录时刻，取消后清空为 null", async () => {
+    const invoke = vi.fn().mockResolvedValue(undefined);
+    const store = new Store(invoke);
+    store.state = blankState();
+    store.state.todos.push(todo({ id: "t1" }));
+    await store.toggleTodo("t1");
+    expect(store.state.todos[0].done).toBe(true);
+    expect(store.state.todos[0].doneAt).not.toBeNull();
+    await store.toggleTodo("t1");
+    expect(store.state.todos[0].done).toBe(false);
+    expect(store.state.todos[0].doneAt).toBeNull();
+    expect(invoke).toHaveBeenNthCalledWith(1, "toggle_todo", { id: "t1" });
+    expect(invoke).toHaveBeenNthCalledWith(2, "toggle_todo", { id: "t1" });
+  });
+});
+
+describe("删除撤销字段保真（Task 7，镜像 render.ts onDelete 撤销流程）", () => {
+  const blankState = (): AppState => ({
+    version: 1,
+    categories: [],
+    todos: [],
+    settings: {
+      theme: "glass",
+      width: 340,
+      posX: null,
+      posY: null,
+      autoStart: true,
+      sortMode: "manual" as const,
+      showOnBootOnlyToday: true,
+    },
+  });
+
+  const fakeAdd = async (cmd: string, args?: Record<string, unknown>) => {
+    if (cmd === "add_todo") {
+      const a = args as {
+        id: string; title: string; categoryId: string | null;
+        dueDate: string | null; dueTime: string | null;
+      };
+      // Rust 侧 order = todos.len()，前端随后 reorder 校正，故 999 无碍
+      return todo({ id: a.id, title: a.title, categoryId: a.categoryId,
+        dueDate: a.dueDate, dueTime: a.dueTime, order: 999 });
+    }
+    return undefined;
+  };
+
+  it("撤销重建：字段全部保真，reorder 恢复原位次（中部）", async () => {
+    const store = new Store(vi.fn().mockImplementation(fakeAdd));
+    store.state = blankState();
+    store.state.todos.push(
+      todo({ id: "t0", title: "更早", order: 0 }),
+      todo({ id: "t1", title: "被删项", categoryId: "c1",
+        dueDate: "2026-09-17", dueTime: "14:00", order: 1 }),
+      todo({ id: "t2", title: "更晚", order: 2 }),
+    );
+    await store.deleteTodo("t1");
+    expect(store.state.todos.map((t) => t.id)).toEqual(["t0", "t2"]);
+
+    const orig = { title: "被删项", categoryId: "c1",
+      dueDate: "2026-09-17", dueTime: "14:00", order: 1 };
+    const newId = "rebuild-1";
+    await store.addTodo(newId, orig.title, orig.categoryId, orig.dueDate, orig.dueTime);
+    const undone = store.state.todos.filter((t) => !t.done).sort((a, b) => a.order - b.order);
+    const ids = undone.map((t) => t.id);
+    ids.splice(ids.indexOf(newId), 1);
+    const rank = undone.filter((t) => t.id !== newId && t.order < orig.order).length;
+    ids.splice(rank, 0, newId);
+    await store.reorder(ids);
+
+    const rebuilt = store.state.todos.find((t) => t.id === newId)!;
+    expect(rebuilt.title).toBe("被删项");
+    expect(rebuilt.categoryId).toBe("c1");
+    expect(rebuilt.dueDate).toBe("2026-09-17");
+    expect(rebuilt.dueTime).toBe("14:00");
+    expect(rebuilt.order).toBe(1);
+    expect(store.state.todos
+      .filter((t) => !t.done).sort((a, b) => a.order - b.order)
+      .map((t) => t.id)).toEqual(["t0", newId, "t2"]);
+  });
+
+  it("撤销重建：被删项在首位时恢复到首位", async () => {
+    const store = new Store(vi.fn().mockImplementation(fakeAdd));
+    store.state = blankState();
+    store.state.todos.push(
+      todo({ id: "t0", order: 0 }),
+      todo({ id: "t1", order: 1 }),
+    );
+    await store.deleteTodo("t0");
+    const orig = { title: "x", categoryId: null, dueDate: null, dueTime: null, order: 0 };
+    const newId = "rebuild-2";
+    await store.addTodo(newId, orig.title, orig.categoryId, orig.dueDate, orig.dueTime);
+    const undone = store.state.todos.filter((t) => !t.done).sort((a, b) => a.order - b.order);
+    const ids = undone.map((t) => t.id);
+    ids.splice(ids.indexOf(newId), 1);
+    const rank = undone.filter((t) => t.id !== newId && t.order < orig.order).length;
+    ids.splice(rank, 0, newId);
+    await store.reorder(ids);
+    expect(store.state.todos.find((t) => t.id === newId)?.order).toBe(0);
+  });
+});
+
+describe("fmtDue（Task 7：日期 meta 文案；2026-09-17 为周四）", () => {
+  const T0 = "2026-09-17";
+  it("今天 + 时间 → 14:00", () =>
+    expect(fmtDue(todo({ dueDate: T0, dueTime: "14:00" }), T0)).toEqual({
+      text: "14:00",
+      over: false,
+    }));
+  it("今天无时间 → null（已在今天组）", () =>
+    expect(fmtDue(todo({ dueDate: T0 }), T0)).toBeNull());
+  it("昨天 → 红色 昨天到期", () =>
+    expect(fmtDue(todo({ dueDate: "2026-09-16" }), T0)).toEqual({
+      text: "昨天到期",
+      over: true,
+    }));
+  it("3 天前 → n 天前", () =>
+    expect(fmtDue(todo({ dueDate: "2026-09-14" }), T0)).toEqual({
+      text: "3 天前",
+      over: true,
+    }));
+  it("两天后 → 周六", () =>
+    expect(fmtDue(todo({ dueDate: "2026-09-19" }), T0)).toEqual({
+      text: "周六",
+      over: false,
+    }));
+  it("10 天后 → 9/27", () =>
+    expect(fmtDue(todo({ dueDate: "2026-09-27" }), T0)).toEqual({
+      text: "9/27",
+      over: false,
+    }));
+  it("已完成 → null", () =>
+    expect(fmtDue(todo({ dueDate: "2026-09-16", done: true }), T0)).toBeNull());
 });

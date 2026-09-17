@@ -5,7 +5,7 @@ import type { AppState, Category, Settings, SortMode, Todo } from "./types";
 export type Bucket = "overdue" | "today" | "later" | "done";
 
 /** 严格校验 "YYYY-MM-DD"（Rust 侧 NaiveDate::parse_from_str 同样拒绝 2026-13-40 这类值） */
-function isValidISODate(s: string): boolean {
+export function isValidISODate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const [y, m, d] = s.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
