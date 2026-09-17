@@ -138,7 +138,14 @@ impl State {
                 }
             }
         }
-        Ok((State::new(), Some("数据文件损坏，已重置为空".into())))
+        // 全部候选都不可读：
+        // - 主文件不存在 → 全新安装，静默返回空状态
+        // - 主文件存在但损坏 → 告警（数据可能丢失，已重置为空）
+        if main.exists() {
+            Ok((State::new(), Some("数据文件损坏，已重置为空".into())))
+        } else {
+            Ok((State::new(), None))
+        }
     }
 }
 
