@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { buckets, sortTodos, Store } from "./state";
+import {
+  activeCategoryAfterDelete,
+  buckets,
+  sortTodos,
+  Store,
+} from "./state";
+import { reorderAfterDrop } from "./drag";
 import { fmtDue } from "./render";
 import type { AppState, Todo } from "./types";
 
@@ -399,4 +405,51 @@ describe("fmtDue（Task 7：日期 meta 文案；2026-09-17 为周四）", () =>
     }));
   it("已完成 → null", () =>
     expect(fmtDue(todo({ dueDate: "2026-09-16", done: true }), T0)).toBeNull());
+});
+
+describe("activeCategoryAfterDelete（Task 8：删除分类后的选中态回退）", () => {
+  it("删除正在选中的分类 → 回全部(null)", () =>
+    expect(activeCategoryAfterDelete("c1", "c1")).toBe(null));
+  it("删除未选中的分类 → 保持选中", () =>
+    expect(activeCategoryAfterDelete("c2", "c1")).toBe("c2"));
+  it("当前未选中(null) → 保持 null", () =>
+    expect(activeCategoryAfterDelete(null, "c1")).toBe(null));
+});
+
+describe("reorderAfterDrop（Task 8：拖拽落点后的未完成全表顺序）", () => {
+  const state = (): AppState => ({
+    version: 1,
+    categories: [],
+    todos: [
+      todo({ id: "o1", dueDate: "2026-09-16", order: 0 }),
+      todo({ id: "t1", order: 1 }),
+      todo({ id: "t2", order: 2 }),
+      todo({ id: "l1", dueDate: "2026-09-18", order: 3 }),
+      todo({ id: "d1", done: true, order: 4 }),
+    ],
+    settings: {
+      theme: "glass",
+      width: 340,
+      posX: null,
+      posY: null,
+      autoStart: true,
+      sortMode: "manual",
+      showOnBootOnlyToday: true,
+    },
+  });
+
+  it("today 组内：t2 拖到 t1 上方 → t2 在前，其余组与已完成不受影响", () => {
+    const ids = reorderAfterDrop(state(), TODAY, "t2", "t1", "above");
+    expect(ids).toEqual(["o1", "t2", "t1", "l1"]);
+  });
+
+  it("below 语义：t1 拖到 t2 下方 → t2 在前", () => {
+    const ids = reorderAfterDrop(state(), TODAY, "t1", "t2", "below");
+    expect(ids).toEqual(["o1", "t2", "t1", "l1"]);
+  });
+
+  it("同组内拖回原位 → 顺序不变（回归：原位放置不乱序）", () => {
+    const ids = reorderAfterDrop(state(), TODAY, "t1", "t2", "above");
+    expect(ids).toEqual(["o1", "t1", "t2", "l1"]);
+  });
 });

@@ -308,3 +308,122 @@ body {
   pointer-events: none;
   transition: width 5s linear;
 }
+
+/* ===== Task 8：拖拽排序 ===== */
+.item.dragging {
+  opacity: 0.4;
+}
+/* 插入位置指示线：用 --accent，三主题下均可见 */
+.item.drop-above::before,
+.item.drop-below::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+.item.drop-above::before {
+  top: -1px;
+}
+.item.drop-below::before {
+  bottom: -1px;
+}
+
+/* ===== Task 8：分类弹层（添加/重命名/换色/删除确认/右键菜单） ===== */
+.popup {
+  position: fixed;
+  z-index: 60;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--popup-bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.popup-input {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--add-bg);
+  border: none;
+  border-bottom: 1px solid var(--cb-border);
+  border-radius: 8px 8px 0 0;
+  padding: 6px 9px;
+  outline: none;
+  user-select: text;
+}
+.popup-input:focus {
+  border-bottom-color: var(--accent);
+}
+.swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.swatch.sel {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+.menu-item {
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.menu-item:hover {
+  background: var(--hover);
+}
+.menu-item.danger {
+  color: var(--over);
+}
+.popup-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.popup-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.popup-ok {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: var(--chip-on-border);
+  background: var(--chip-on-bg);
+  color: var(--chip-on-text);
+  cursor: pointer;
+}
+.popup-ok.danger {
+  background: var(--over);
+  border: none;
+  color: #fff;
+}
+.empty-hint {
+  text-align: center;
+  padding: 24px 0 8px;
+  font-size: 12px;
+  color: var(--sect-label);
+}

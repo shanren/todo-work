@@ -4,6 +4,22 @@ import type { AppState, Category, Settings, SortMode, Todo } from "./types";
 
 export type Bucket = "overdue" | "today" | "later" | "done";
 
+/** 本地时区的 "YYYY-MM-DD"（勿用 toISOString：那是 UTC，会跑一天） */
+export function localTodayISO(now = new Date()): string {
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** 删除分类后的选中态回退：被删分类正被选中 → 回"全部"（null），否则保持 */
+export function activeCategoryAfterDelete(
+  active: string | null,
+  deletedId: string,
+): string | null {
+  return active === deletedId ? null : active;
+}
+
 /** 严格校验 "YYYY-MM-DD"（Rust 侧 NaiveDate::parse_from_str 同样拒绝 2026-13-40 这类值） */
 export function isValidISODate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;

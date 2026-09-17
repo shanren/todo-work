@@ -20,6 +20,7 @@
   --chip-on-bg: #1d1d1f;
   --chip-on-text: #fff;
   --chip-on-border: none;
+  --popup-bg: rgba(250, 250, 252, 0.97);
   --hover: rgba(120, 120, 140, 0.08);
   --add-bg: rgba(120, 120, 140, 0.1);
   --add-border: none;
@@ -46,6 +47,7 @@
   --chip-on-bg: #fff;
   --chip-on-text: #3b82f6;
   --chip-on-border: 1px solid #3b82f6;
+  --popup-bg: #ffffff;
   --hover: rgba(120, 120, 140, 0.06);
   --add-bg: #f7f7f9;
   --add-border: 1px dashed #dcdce2;
@@ -72,6 +74,7 @@
   --chip-on-bg: rgba(255, 255, 255, 0.14);
   --chip-on-text: #fff;
   --chip-on-border: none;
+  --popup-bg: rgba(38, 38, 43, 0.97);
   --hover: rgba(255, 255, 255, 0.05);
   --add-bg: rgba(255, 255, 255, 0.06);
   --add-border: none;

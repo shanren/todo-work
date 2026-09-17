@@ -2,25 +2,19 @@
 // Task 7：事件委托（勾选/删除/行内编辑）、toast 撤销、添加栏、日期 meta、
 // 已完成组按 doneAt 倒序。Store 变更 → 单一 render() 重绘，输入框在 #list 之外故焦点不丢。
 import {
+  activeCategoryAfterDelete,
   buckets,
   isValidISODate,
+  localTodayISO,
   sortTodos,
   type Bucket,
   type Store,
 } from "./state";
 import type { AppState, Category, Todo } from "./types";
+import { bindDragAndDrop } from "./drag";
 
-// ============================================================
-// 工具
-// ============================================================
-
-/** 本地时区的 "YYYY-MM-DD"（勿用 toISOString：那是 UTC，会跑一天） */
-export function localTodayISO(now = new Date()): string {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+// localTodayISO 已收编至 state.ts（drag.ts 亦需使用）；此处保留导出兼容旧引用
+export { localTodayISO };
 
 function h(tag: string, className?: string, text?: string): HTMLElement {
   const el = document.createElement(tag);
@@ -143,20 +137,44 @@ function renderHeader(now: Date): void {
   );
 }
 
+/** Task 8 预设色板（8 色：红/橙/黄/绿/青/蓝/紫/灰，见任务书与需求 §3.3） */
+const CATEGORY_PALETTE = [
+  "#e5484d",
+  "#f59e0b",
+  "#facc15",
+  "#34c759",
+  "#06b6d4",
+  "#3b82f6",
+  "#8b5cf6",
+  "#8e8e93",
+] as const;
+
 function renderChips(state: AppState): void {
   const chipsEl = document.querySelector<HTMLElement>("#chips");
   if (!chipsEl) {
     return;
   }
-  const chips: HTMLElement[] = [h("span", "chip on", "全部")];
+  const chips: HTMLElement[] = [];
+  // "全部"：dataset.catId 为空串（falsy → activeCategoryId = null）
+  const all = h("span", activeCategoryId === null ? "chip on" : "chip", "全部");
+  all.dataset.catId = "";
+  chips.push(all);
   for (const c of state.categories) {
-    const chip = h("span", "chip", c.name);
+    const chip = h(
+      "span",
+      activeCategoryId === c.id ? "chip on" : "chip",
+      c.name,
+    );
+    chip.dataset.catId = c.id;
+    chip.title = "右键：重命名 / 换色 / 删除";
     const dot = h("span", "dot");
     dot.style.background = c.color;
     chip.prepend(dot);
     chips.push(chip);
   }
-  chips.push(h("span", "chip", "＋"));
+  const add = h("span", "chip", "＋");
+  add.id = "chip-add";
+  chips.push(add);
   chipsEl.replaceChildren(...chips);
 }
 
@@ -180,6 +198,10 @@ function metaEl(
 function itemEl(todo: Todo, state: AppState, today: string): HTMLElement {
   const item = h("div", `item${todo.done ? " done" : ""}`);
   item.dataset.id = todo.id;
+  // 拖拽仅限 manual 模式且未完成（done/非 manual 不可拖）
+  if (state.settings.sortMode === "manual" && !todo.done) {
+    item.draggable = true;
+  }
   const bar = h("span", "bar");
   const color = colorOf(todo, state.categories);
   if (color) {
@@ -202,7 +224,11 @@ function renderList(state: AppState, today: string): void {
   if (!listEl) {
     return;
   }
-  const sorted = sortTodos(state.todos, state.settings.sortMode);
+  // Task 8：chips 过滤（"全部" = 不过滤）
+  const visible = activeCategoryId
+    ? state.todos.filter((t) => t.categoryId === activeCategoryId)
+    : state.todos;
+  const sorted = sortTodos(visible, state.settings.sortMode);
   const groups = groupByBucket(sorted, today);
   const frag = document.createDocumentFragment();
   for (const bucket of GROUP_ORDER) {
@@ -222,6 +248,15 @@ function renderList(state: AppState, today: string): void {
       wrap.append(itemEl(todo, state, today));
     }
     frag.append(wrap);
+  }
+  if (frag.childNodes.length === 0) {
+    frag.append(
+      h(
+        "div",
+        "empty-hint",
+        activeCategoryId ? "此分类暂无待办" : "暂无待办，从下方添加",
+      ),
+    );
   }
   listEl.replaceChildren(frag);
 }
@@ -258,8 +293,8 @@ export function render(state: AppState): void {
 let editingId: string | null = null;
 let toastTimer: number | undefined;
 
-/** 当前添加栏归属的分类；chips 交互在 Task 8 接管此前恒为 null（"全部"） */
-const activeCategoryId: string | null = null;
+/** 当前选中的分类（chips 过滤 + 添加栏归属）；null = "全部" */
+let activeCategoryId: string | null = null;
 
 function hideToast(): void {
   if (toastTimer !== undefined) {
@@ -441,6 +476,260 @@ function bindListEvents(store: Store, refresh: () => void): void {
   });
 }
 
+// ============================================================
+// Task 8：分类 chips 与弹层（添加/重命名/换色/删除确认）
+// ============================================================
+
+let popupEl: HTMLElement | null = null;
+let popupCleanup: (() => void) | null = null;
+
+function closePopup(): void {
+  popupCleanup?.();
+  popupCleanup = null;
+  popupEl?.remove();
+  popupEl = null;
+}
+
+/** 弹层单例：构建内容 → 定位到锚点下方（放不下则上方）→ 外部点击/Esc 关闭 */
+function openPopup(
+  anchor: HTMLElement,
+  build: (popup: HTMLElement, close: () => void) => void,
+): void {
+  closePopup();
+  const popup = h("div", "popup");
+  document.body.append(popup);
+  popupEl = popup;
+  build(popup, closePopup);
+  const r = anchor.getBoundingClientRect();
+  let left = Math.min(r.left, window.innerWidth - popup.offsetWidth - 8);
+  if (left < 8) {
+    left = 8;
+  }
+  let top = r.bottom + 6;
+  if (top + popup.offsetHeight > window.innerHeight - 8) {
+    top = Math.max(8, r.top - popup.offsetHeight - 6);
+  }
+  popup.style.left = `${left}px`;
+  popup.style.top = `${top}px`;
+  const closer = (e: MouseEvent) => {
+    if (!(e.target as HTMLElement).closest(".popup")) {
+      closePopup();
+    }
+  };
+  const esc = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      closePopup();
+    }
+  };
+  document.addEventListener("click", closer, true);
+  document.addEventListener("keydown", esc, true);
+  popupCleanup = () => {
+    document.removeEventListener("click", closer, true);
+    document.removeEventListener("keydown", esc, true);
+  };
+}
+
+function paletteEl(
+  selected: string,
+  onPick: (color: string) => void,
+): HTMLElement {
+  const wrap = h("div", "swatches");
+  for (const c of CATEGORY_PALETTE) {
+    const s = h("button", c === selected ? "swatch sel" : "swatch");
+    s.style.background = c;
+    s.dataset.color = c;
+    s.addEventListener("click", () => onPick(c));
+    wrap.append(s);
+  }
+  return wrap;
+}
+
+/** 「＋」添加分类面板：名称输入 + 色板单选（默认蓝）+ 创建 */
+function openAddPopup(
+  anchor: HTMLElement,
+  store: Store,
+  refresh: () => void,
+): void {
+  openPopup(anchor, (popup, close) => {
+    const input = document.createElement("input");
+    input.className = "popup-input";
+    input.placeholder = "分类名称";
+    let color: string = CATEGORY_PALETTE[5];
+    const sw = paletteEl(color, (c) => {
+      color = c;
+      for (const el of popup.querySelectorAll<HTMLElement>(".swatch")) {
+        el.classList.toggle("sel", el.dataset.color === c);
+      }
+    });
+    const ok = h("button", "popup-ok", "创建");
+    const commit = () => {
+      const name = input.value.trim();
+      if (!name) {
+        input.focus();
+        return;
+      }
+      store
+        .addCategory(crypto.randomUUID(), name, color)
+        .then(() => {
+          close();
+          refresh();
+        })
+        .catch(refresh);
+    };
+    ok.addEventListener("click", commit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commit();
+      }
+    });
+    popup.append(input, sw, ok);
+    input.focus();
+  });
+}
+
+/** chip 右键菜单：重命名 / 换色 / 删除（确认后其下待办移入收件箱） */
+function openCategoryMenu(
+  anchor: HTMLElement,
+  cat: Category,
+  store: Store,
+  refresh: () => void,
+): void {
+  openPopup(anchor, (popup, close) => {
+    const count = store.state.todos.filter(
+      (t) => t.categoryId === cat.id,
+    ).length;
+    const item = (label: string, fn: () => void, danger = false) => {
+      const b = h("button", danger ? "menu-item danger" : "menu-item", label);
+      b.addEventListener("click", () => {
+        close();
+        fn();
+      });
+      return b;
+    };
+    const rename = () => {
+      openPopup(anchor, (p2, close2) => {
+        const input = document.createElement("input");
+        input.className = "popup-input";
+        input.value = cat.name;
+        const commit = () => {
+          const name = input.value.trim();
+          if (!name || name === cat.name) {
+            close2();
+            refresh();
+            return;
+          }
+          store
+            .updateCategory(cat.id, name)
+            .then(() => {
+              close2();
+              refresh();
+            })
+            .catch(refresh);
+        };
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          }
+        });
+        p2.append(input);
+        input.focus();
+        input.select();
+      });
+    };
+    const recolor = () => {
+      openPopup(anchor, (p2, close2) => {
+        p2.append(
+          paletteEl(cat.color, (c) => {
+            store
+              .updateCategory(cat.id, undefined, c)
+              .then(() => {
+                close2();
+                refresh();
+              })
+              .catch(refresh);
+          }),
+        );
+      });
+    };
+    const del = () => {
+      openPopup(anchor, (p2, close2) => {
+        p2.append(
+          h(
+            "div",
+            "popup-text",
+            `删除分类"${cat.name}"？其下 ${count} 条待办将移入收件箱`,
+          ),
+        );
+        const row = h("div", "popup-row");
+        const no = h("button", "popup-ok", "取消");
+        const yes = h("button", "popup-ok danger", "删除");
+        no.addEventListener("click", () => close2());
+        yes.addEventListener("click", () => {
+          store
+            .deleteCategory(cat.id)
+            .then(() => {
+              // 被删分类正在选中 → 回"全部"（纯逻辑见 state.activeCategoryAfterDelete）
+              activeCategoryId = activeCategoryAfterDelete(
+                activeCategoryId,
+                cat.id,
+              );
+              close2();
+              refresh();
+            })
+            .catch(refresh);
+        });
+        row.append(no, yes);
+        p2.append(row);
+      });
+    };
+    popup.append(
+      item("重命名", rename),
+      item("换色", recolor),
+      item("删除", del, true),
+    );
+  });
+}
+
+/** chips 交互：点击过滤 / ＋ 新建 / 右键菜单（事件委托，重渲染不丢） */
+function bindChips(store: Store, refresh: () => void): void {
+  const chipsEl = document.getElementById("chips");
+  if (!chipsEl) {
+    return;
+  }
+  chipsEl.addEventListener("click", (e) => {
+    const chip = (e.target as HTMLElement).closest<HTMLElement>(".chip");
+    if (!chip) {
+      return;
+    }
+    if (chip.id === "chip-add") {
+      if (popupEl) {
+        closePopup();
+      } else {
+        openAddPopup(chip, store, refresh);
+      }
+      return;
+    }
+    closePopup();
+    activeCategoryId = chip.dataset.catId ? chip.dataset.catId : null;
+    refresh();
+  });
+  chipsEl.addEventListener("contextmenu", (e) => {
+    const chip = (e.target as HTMLElement).closest<HTMLElement>(".chip");
+    if (!chip || !chip.dataset.catId) {
+      return;
+    }
+    e.preventDefault();
+    const cat = store.state.categories.find(
+      (c) => c.id === chip.dataset.catId,
+    );
+    if (cat) {
+      openCategoryMenu(chip, cat, store, refresh);
+    }
+  });
+}
+
 function bindAddBar(store: Store, refresh: () => void): void {
   const addInput = document.querySelector<HTMLInputElement>("#add-input");
   if (!addInput) {
@@ -469,8 +758,10 @@ export function initApp(store: Store): void {
   const refresh = () => {
     render(store.state);
   };
+  bindChips(store, refresh);
   bindListEvents(store, refresh);
   bindAddBar(store, refresh);
+  bindDragAndDrop(store, refresh);
   render(store.state);
 }
 
