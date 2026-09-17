@@ -10,8 +10,8 @@
   </head>
 
   <body>
-    <header class="w-head">
-      <div class="w-date" id="date"></div>
+    <header class="w-head" data-tauri-drag-region>
+      <div class="w-date" id="date" data-tauri-drag-region></div>
       <div class="w-actions"><span id="btn-settings">⚙</span><span id="btn-sort">⛶</span></div>
     </header>
 
@@ -24,7 +24,7 @@
     <footer class="foot">
       <span id="foot-count"></span>
       <div class="prog"><i id="prog-fill" style="width: 0%"></i></div>
-      <span>收起 ▸</span>
+      <span id="btn-collapse">收起 ▸</span>
     </footer>
 
     <div id="toast" class="toast"></div>

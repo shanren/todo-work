@@ -12,6 +12,8 @@ import {
 } from "./state";
 import type { AppState, Category, Todo } from "./types";
 import { bindDragAndDrop } from "./drag";
+import { collapseWindow, listenEvent } from "./bridge";
+import { openSettingsPanel } from "./settings";
 
 // localTodayISO 已收编至 state.ts（drag.ts 亦需使用）；此处保留导出兼容旧引用
 export { localTodayISO };
@@ -490,8 +492,8 @@ function closePopup(): void {
   popupEl = null;
 }
 
-/** 弹层单例：构建内容 → 定位到锚点下方（放不下则上方）→ 外部点击/Esc 关闭 */
-function openPopup(
+/** 弹层单例：构建内容 → 定位到锚点下方（放不下则上方）→ 外部点击/Esc 关闭（settings.ts 复用） */
+export function openPopup(
   anchor: HTMLElement,
   build: (popup: HTMLElement, close: () => void) => void,
 ): void {
@@ -518,6 +520,8 @@ function openPopup(
   };
   const esc = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
+      // 阻断同一文档上后续的 Esc 监听（bindCollapseControls 的收起）
+      e.stopImmediatePropagation();
       closePopup();
     }
   };
@@ -752,6 +756,45 @@ function bindAddBar(store: Store, refresh: () => void): void {
 }
 
 /** 装配交互与首渲染。main.ts 在状态加载完成后调用一次。 */
+/** 收起控制：Esc / 页脚「收起」/ 头部空白点击（⚙ ⛶ 除外）。Rust 侧销毁窗口。 */
+function bindCollapseControls(): void {
+  const doCollapse = () => {
+    collapseWindow().catch(() => undefined);
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      doCollapse();
+    }
+  });
+  document.getElementById("btn-collapse")?.addEventListener("click", doCollapse);
+  const head = document.querySelector<HTMLElement>(".w-head");
+  head?.addEventListener("click", (e) => {
+    const t = e.target as HTMLElement;
+    if (!t.closest("#btn-settings") && !t.closest("#btn-sort")) {
+      doCollapse();
+    }
+  });
+}
+
+/** Rust 事件：state-changed（托盘/重建后同步）、focus-add、open-settings */
+function bindRuntimeEvents(store: Store, refresh: () => void): void {
+  void listenEvent("state-changed", () => {
+    store
+      .load()
+      .then(refresh)
+      .catch(() => undefined);
+  });
+  void listenEvent("focus-add", () => {
+    document.getElementById("add-input")?.focus();
+  });
+  void listenEvent("open-settings", () => {
+    const anchor = document.getElementById("btn-settings");
+    if (anchor) {
+      openSettingsPanel(anchor, store, refresh);
+    }
+  });
+}
+
 export function initApp(store: Store): void {
   const refresh = () => {
     render(store.state);
@@ -760,6 +803,14 @@ export function initApp(store: Store): void {
   bindListEvents(store, refresh);
   bindAddBar(store, refresh);
   bindDragAndDrop(store, refresh);
+  bindCollapseControls();
+  bindRuntimeEvents(store, refresh);
+  document.getElementById("btn-settings")?.addEventListener("click", () => {
+    const anchor = document.getElementById("btn-settings");
+    if (anchor) {
+      openSettingsPanel(anchor, store, refresh);
+    }
+  });
   render(store.state);
 }
 
@@ -810,6 +861,7 @@ export function demoState(): AppState {
       posX: null,
       posY: null,
       autoStart: true,
+      autoCollapse: false,
       sortMode: "manual",
       showOnBootOnlyToday: true,
     },

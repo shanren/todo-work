@@ -103,6 +103,7 @@ describe("Store（乐观更新 + 失败回滚，fake invoke）", () => {
       posX: null,
       posY: null,
       autoStart: true,
+      autoCollapse: false,
       sortMode: "manual" as const,
       showOnBootOnlyToday: true,
     },
@@ -220,6 +221,7 @@ describe("toggleTodo（Task 7：doneAt 记录与清空）", () => {
       posX: null,
       posY: null,
       autoStart: true,
+      autoCollapse: false,
       sortMode: "manual" as const,
       showOnBootOnlyToday: true,
     },
@@ -252,6 +254,7 @@ describe("删除撤销字段保真（Task 7，镜像 render.ts onDelete 撤销�
       posX: null,
       posY: null,
       autoStart: true,
+      autoCollapse: false,
       sortMode: "manual" as const,
       showOnBootOnlyToday: true,
     },
@@ -433,6 +436,7 @@ describe("reorderAfterDrop（Task 8：拖拽落点后的未完成全表顺序）
       posX: null,
       posY: null,
       autoStart: true,
+      autoCollapse: false,
       sortMode: "manual",
       showOnBootOnlyToday: true,
     },
@@ -451,5 +455,43 @@ describe("reorderAfterDrop（Task 8：拖拽落点后的未完成全表顺序）
   it("同组内拖回原位 → 顺序不变（回归：原位放置不乱序）", () => {
     const ids = reorderAfterDrop(state(), TODAY, "t1", "t2", "above");
     expect(ids).toEqual(["o1", "t1", "t2", "l1"]);
+  });
+});
+
+describe("setSettings（Task 9：autoCollapse 持久化透传）", () => {
+  it("autoCollapse 透传到 set_settings 并更新本地镜像", async () => {
+    const server = {
+      theme: "glass",
+      width: 340,
+      posX: null,
+      posY: null,
+      autoStart: true,
+      autoCollapse: true,
+      sortMode: "manual",
+      showOnBootOnlyToday: true,
+    } as AppState["settings"];
+    const invoke = vi.fn().mockResolvedValue(server);
+    const store = new Store(invoke);
+    store.state = {
+      version: 1,
+      categories: [],
+      todos: [],
+      settings: {
+        theme: "glass",
+        width: 340,
+        posX: null,
+        posY: null,
+        autoStart: true,
+        autoCollapse: false,
+        sortMode: "manual",
+        showOnBootOnlyToday: true,
+      },
+    };
+    const st = await store.setSettings({ autoCollapse: true });
+    expect(st.autoCollapse).toBe(true);
+    expect(store.state.settings.autoCollapse).toBe(true);
+    expect(invoke).toHaveBeenCalledWith("set_settings", {
+      patch: { autoCollapse: true },
+    });
   });
 });

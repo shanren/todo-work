@@ -116,6 +116,7 @@ export interface SettingsPatch {
   posX?: number | null;
   posY?: number | null;
   autoStart?: boolean;
+  autoCollapse?: boolean;
   sortMode?: SortMode;
   showOnBootOnlyToday?: boolean;
 }
@@ -142,6 +143,7 @@ export function emptyState(): AppState {
       posX: null,
       posY: null,
       autoStart: true,
+      autoCollapse: false,
       sortMode: "manual",
       showOnBootOnlyToday: true,
     },
@@ -380,6 +382,7 @@ export class Store {
     if (patch.posX !== undefined) s.posX = patch.posX;
     if (patch.posY !== undefined) s.posY = patch.posY;
     if (patch.autoStart !== undefined) s.autoStart = patch.autoStart;
+    if (patch.autoCollapse !== undefined) s.autoCollapse = patch.autoCollapse;
     if (patch.sortMode !== undefined) s.sortMode = patch.sortMode;
     if (patch.showOnBootOnlyToday !== undefined)
       s.showOnBootOnlyToday = patch.showOnBootOnlyToday;

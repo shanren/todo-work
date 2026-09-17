@@ -43,6 +43,11 @@ pub fn has_today(state: &State, today: NaiveDate) -> bool {
         .any(|todo| matches!(bucket(todo, today), Bucket::Today | Bucket::Overdue))
 }
 
+/// 开机是否显示主窗：开关开启时仅有今日/过期待办才显示，关闭则恒显示（仅托盘需手动唤起）。
+pub fn should_show_on_boot(state: &State, today: NaiveDate) -> bool {
+    !state.settings.show_on_boot_only_today || has_today(state, today)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,5 +106,30 @@ mod tests {
         assert!(has_today(&s, today));
         s.todos[0].due_date = Some("2026-09-18".into());
         assert!(!has_today(&s, today));
+    }
+
+    #[test]
+    fn boot_shows_with_today_todo() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 17).unwrap();
+        let mut s = crate::store::State::default();
+        s.todos.push(t(Some("2026-09-17"), false));
+        assert!(should_show_on_boot(&s, today));
+    }
+
+    #[test]
+    fn boot_hides_without_today_todo() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 17).unwrap();
+        let mut s = crate::store::State::default();
+        s.todos.push(t(Some("2026-09-18"), false)); // 明天到期，今日无待办
+        assert!(!should_show_on_boot(&s, today));
+    }
+
+    #[test]
+    fn boot_switch_off_always_shows() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 9, 17).unwrap();
+        let mut s = crate::store::State::default();
+        s.settings.show_on_boot_only_today = false;
+        s.todos.push(t(Some("2026-09-18"), false));
+        assert!(should_show_on_boot(&s, today));
     }
 }

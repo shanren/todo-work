@@ -44,6 +44,9 @@ pub struct Settings {
     pub pos_x: Option<f64>,
     pub pos_y: Option<f64>,
     pub auto_start: bool,
+    /// 失焦自动收起（Task 9 仅 UI + 持久化，监听接线在 Task 10）
+    #[serde(default)]
+    pub auto_collapse: bool,
     /// manual | due | category | created
     pub sort_mode: String,
     pub show_on_boot_only_today: bool,
@@ -57,6 +60,7 @@ impl Default for Settings {
             pos_x: None,
             pos_y: None,
             auto_start: true,
+            auto_collapse: false,
             sort_mode: "manual".into(),
             show_on_boot_only_today: true,
         }

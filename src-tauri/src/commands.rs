@@ -192,6 +192,7 @@ pub struct SettingsPatch {
     pub pos_x: Option<Option<f64>>,
     pub pos_y: Option<Option<f64>>,
     pub auto_start: Option<bool>,
+    pub auto_collapse: Option<bool>,
     pub sort_mode: Option<String>,
     pub show_on_boot_only_today: Option<bool>,
 }
@@ -245,6 +246,9 @@ pub mod patch_ops {
         }
         if let Some(v) = patch.auto_start {
             s.auto_start = v;
+        }
+        if let Some(v) = patch.auto_collapse {
+            s.auto_collapse = v;
         }
         if let Some(v) = patch.sort_mode {
             s.sort_mode = v;
@@ -301,6 +305,7 @@ pub fn add_todo(
         ops::add_todo(&mut st, id, title, category_id, due_date, due_time)
     };
     persist(&state, &app)?;
+    crate::window::refresh_badge(&app);
     Ok(todo)
 }
 
@@ -315,6 +320,7 @@ pub fn toggle_todo(
         ops::toggle_todo(&mut st, &id)?
     };
     persist(&state, &app)?;
+    crate::window::refresh_badge(&app);
     Ok(todo)
 }
 
@@ -330,6 +336,7 @@ pub fn update_todo(
         patch_ops::update_todo(&mut st, &id, patch)?
     };
     persist(&state, &app)?;
+    crate::window::refresh_badge(&app);
     Ok(todo)
 }
 
@@ -343,7 +350,9 @@ pub fn delete_todo(
         let mut st = state.lock().map_err(lock_err)?;
         ops::delete_todo(&mut st, &id)?;
     }
-    persist(&state, &app)
+    persist(&state, &app)?;
+    crate::window::refresh_badge(&app);
+    Ok(())
 }
 
 #[tauri::command]
@@ -356,7 +365,9 @@ pub fn reorder(
         let mut st = state.lock().map_err(lock_err)?;
         ops::reorder(&mut st, &ids);
     }
-    persist(&state, &app)
+    persist(&state, &app)?;
+    crate::window::refresh_badge(&app);
+    Ok(())
 }
 
 #[tauri::command]
@@ -410,12 +421,24 @@ pub fn set_settings(
     state: tauri::State<'_, Mutex<State>>,
     patch: SettingsPatch,
 ) -> Result<Settings, String> {
+    let sync_autostart = patch.auto_start;
     let settings = {
         let mut st = state.lock().map_err(lock_err)?;
         patch_ops::set_settings(&mut st, patch)
     };
     persist(&state, &app)?;
+    if let Some(on) = sync_autostart {
+        crate::window::sync_autostart(&app, on)?;
+    }
     Ok(settings)
+}
+
+/// 收起 = 销毁窗口（Task 9 设计修订：无 hide 态，展示/隐藏即重建/销毁）。
+#[tauri::command]
+pub fn collapse(window: tauri::WebviewWindow) -> Result<(), String> {
+    window
+        .destroy()
+        .map_err(|e| format!("收起窗口失败: {e}"))
 }
 
 #[tauri::command]
@@ -430,6 +453,7 @@ pub fn quick_add(
         ops::quick_add(&mut st, id, text)
     };
     persist(&state, &app)?;
+    crate::window::refresh_badge(&app);
     Ok(todo)
 }
 
