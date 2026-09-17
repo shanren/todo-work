@@ -2,10 +2,10 @@
 // Rust 侧 Option<T> → TS `T | null`；勿在本文件引入任何运行时逻辑。
 
 /** glass | paper | dark | system（Spec §6 主题系统） */
-export type ThemeMode = 'glass' | 'paper' | 'dark' | 'system';
+export type ThemeMode = "glass" | "paper" | "dark" | "system";
 
 /** manual | due | category | created（Spec §3 settings.sortMode） */
-export type SortMode = 'manual' | 'due' | 'category' | 'created';
+export type SortMode = "manual" | "due" | "category" | "created";
 
 export interface Todo {
   /** 前端 crypto.randomUUID() 生成，Rust 侧不生成 */

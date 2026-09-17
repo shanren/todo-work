@@ -1,15 +1,19 @@
 // 前端状态层：纯函数（分组/排序）+ Store（乐观更新、失败回滚）。
 // 语义镜像 src-tauri/src/commands.rs 的 ops / patch_ops 模块，两侧规则必须保持一致。
-import type { AppState, Category, Settings, SortMode, Todo } from './types';
+import type { AppState, Category, Settings, SortMode, Todo } from "./types";
 
-export type Bucket = 'overdue' | 'today' | 'later' | 'done';
+export type Bucket = "overdue" | "today" | "later" | "done";
 
 /** 严格校验 "YYYY-MM-DD"（Rust 侧 NaiveDate::parse_from_str 同样拒绝 2026-13-40 这类值） */
 function isValidISODate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const [y, m, d] = s.split('-').map(Number);
+  const [y, m, d] = s.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
-  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+  return (
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === m - 1 &&
+    date.getUTCDate() === d
+  );
 }
 
 /**
@@ -19,11 +23,11 @@ function isValidISODate(s: string): boolean {
  * - dueDate 缺失或解析失败且未完成 → 'today'（无到期未完成视为"今日待清理"）
  */
 export function buckets(todo: Todo, todayISO: string): Bucket {
-  if (todo.done) return 'done';
-  if (todo.dueDate === null || !isValidISODate(todo.dueDate)) return 'today';
-  if (todo.dueDate < todayISO) return 'overdue';
-  if (todo.dueDate > todayISO) return 'later';
-  return 'today';
+  if (todo.done) return "done";
+  if (todo.dueDate === null || !isValidISODate(todo.dueDate)) return "today";
+  if (todo.dueDate < todayISO) return "overdue";
+  if (todo.dueDate > todayISO) return "later";
+  return "today";
 }
 
 /**
@@ -47,7 +51,11 @@ export function sortTodos(list: Todo[], mode: SortMode): Todo[] {
       return byOrder(a, b);
     },
     category: (a, b) => {
-      if (a.categoryId !== null && b.categoryId !== null && a.categoryId !== b.categoryId) {
+      if (
+        a.categoryId !== null &&
+        b.categoryId !== null &&
+        a.categoryId !== b.categoryId
+      ) {
         return a.categoryId < b.categoryId ? -1 : 1;
       }
       if (a.categoryId !== null && b.categoryId === null) return -1;
@@ -55,7 +63,8 @@ export function sortTodos(list: Todo[], mode: SortMode): Todo[] {
       return byOrder(a, b);
     },
     created: (a, b) => {
-      if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
+      if (a.createdAt !== b.createdAt)
+        return a.createdAt < b.createdAt ? -1 : 1;
       return byOrder(a, b);
     },
   };
@@ -86,7 +95,7 @@ export interface TodoPatch {
 
 /** 设置补丁（字段缺省 = 不改；posX/posY 为三态可清空）。 */
 export interface SettingsPatch {
-  theme?: Settings['theme'];
+  theme?: Settings["theme"];
   width?: number;
   posX?: number | null;
   posY?: number | null;
@@ -96,8 +105,11 @@ export interface SettingsPatch {
 }
 
 /** 真实 IPC：动态 import 隔离，测试注入 fake 时不会触碰 Tauri 运行时。 */
-async function realInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const { invoke } = await import('@tauri-apps/api/core');
+async function realInvoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
+  const { invoke } = await import("@tauri-apps/api/core");
   return invoke<T>(cmd, args);
 }
 
@@ -109,12 +121,12 @@ export function emptyState(): AppState {
     categories: [],
     todos: [],
     settings: {
-      theme: 'glass',
+      theme: "glass",
       width: 340,
       posX: null,
       posY: null,
       autoStart: true,
-      sortMode: 'manual',
+      sortMode: "manual",
       showOnBootOnlyToday: true,
     },
   };
@@ -130,7 +142,7 @@ export class Store {
   constructor(private invoke: InvokeFn = realInvoke) {}
 
   async load(): Promise<void> {
-    this.state = await this.invoke<AppState>('get_state');
+    this.state = await this.invoke<AppState>("get_state");
   }
 
   /** 乐观变更通用骨架：快照 → 本地变更 → invoke → 失败恢复快照并上抛 */
@@ -172,7 +184,7 @@ export class Store {
       order: this.state.todos.length,
     });
     try {
-      const server = await this.invoke<Todo>('add_todo', {
+      const server = await this.invoke<Todo>("add_todo", {
         id,
         title,
         categoryId,
@@ -203,7 +215,7 @@ export class Store {
       order: this.state.todos.length,
     });
     try {
-      const server = await this.invoke<Todo>('quick_add', { id, text });
+      const server = await this.invoke<Todo>("quick_add", { id, text });
       this.replaceTodo(server);
       return server;
     } catch (e) {
@@ -220,7 +232,7 @@ export class Store {
         t.done = !t.done;
         t.doneAt = t.done ? new Date().toISOString() : null;
       },
-      'toggle_todo',
+      "toggle_todo",
       { id },
     );
   }
@@ -235,7 +247,7 @@ export class Store {
     if (patch.dueDate !== undefined) t.dueDate = patch.dueDate;
     if (patch.dueTime !== undefined) t.dueTime = patch.dueTime;
     try {
-      const server = await this.invoke<Todo>('update_todo', { id, patch });
+      const server = await this.invoke<Todo>("update_todo", { id, patch });
       this.replaceTodo(server);
       return server;
     } catch (e) {
@@ -249,7 +261,7 @@ export class Store {
       (s) => {
         s.todos = s.todos.filter((t) => t.id !== id);
       },
-      'delete_todo',
+      "delete_todo",
       { id },
     );
   }
@@ -269,17 +281,30 @@ export class Store {
           else if (tail.has(t.id)) t.order = tail.get(t.id)!;
         }
       },
-      'reorder',
+      "reorder",
       { ids },
     );
   }
 
-  async addCategory(id: string, name: string, color: string): Promise<Category> {
+  async addCategory(
+    id: string,
+    name: string,
+    color: string,
+  ): Promise<Category> {
     const snapshot = structuredClone(this.state);
-    const local: Category = { id, name, color, order: this.state.categories.length };
+    const local: Category = {
+      id,
+      name,
+      color,
+      order: this.state.categories.length,
+    };
     this.state.categories.push(local);
     try {
-      const server = await this.invoke<Category>('add_category', { id, name, color });
+      const server = await this.invoke<Category>("add_category", {
+        id,
+        name,
+        color,
+      });
       const i = this.state.categories.findIndex((c) => c.id === id);
       if (i !== -1) this.state.categories[i] = server;
       return server;
@@ -289,14 +314,22 @@ export class Store {
     }
   }
 
-  async updateCategory(id: string, name?: string, color?: string): Promise<Category> {
+  async updateCategory(
+    id: string,
+    name?: string,
+    color?: string,
+  ): Promise<Category> {
     const snapshot = structuredClone(this.state);
     const c = this.state.categories.find((x) => x.id === id);
     if (!c) throw new Error(`分类不存在: ${id}`);
     if (name !== undefined) c.name = name;
     if (color !== undefined) c.color = color;
     try {
-      const server = await this.invoke<Category>('update_category', { id, name, color });
+      const server = await this.invoke<Category>("update_category", {
+        id,
+        name,
+        color,
+      });
       const i = this.state.categories.findIndex((x) => x.id === id);
       if (i !== -1) this.state.categories[i] = server;
       return server;
@@ -311,13 +344,14 @@ export class Store {
       (s) => {
         const before = s.categories.length;
         s.categories = s.categories.filter((c) => c.id !== id);
-        if (s.categories.length === before) throw new Error(`分类不存在: ${id}`);
+        if (s.categories.length === before)
+          throw new Error(`分类不存在: ${id}`);
         // 镜像 Rust ops::delete_category：其下待办移入收件箱
         for (const t of s.todos) {
           if (t.categoryId === id) t.categoryId = null;
         }
       },
-      'delete_category',
+      "delete_category",
       { id },
     );
   }
@@ -331,9 +365,10 @@ export class Store {
     if (patch.posY !== undefined) s.posY = patch.posY;
     if (patch.autoStart !== undefined) s.autoStart = patch.autoStart;
     if (patch.sortMode !== undefined) s.sortMode = patch.sortMode;
-    if (patch.showOnBootOnlyToday !== undefined) s.showOnBootOnlyToday = patch.showOnBootOnlyToday;
+    if (patch.showOnBootOnlyToday !== undefined)
+      s.showOnBootOnlyToday = patch.showOnBootOnlyToday;
     try {
-      const server = await this.invoke<Settings>('set_settings', { patch });
+      const server = await this.invoke<Settings>("set_settings", { patch });
       this.state.settings = server;
       return server;
     } catch (e) {
