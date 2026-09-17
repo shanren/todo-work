@@ -721,9 +721,7 @@ function bindChips(store: Store, refresh: () => void): void {
       return;
     }
     e.preventDefault();
-    const cat = store.state.categories.find(
-      (c) => c.id === chip.dataset.catId,
-    );
+    const cat = store.state.categories.find((c) => c.id === chip.dataset.catId);
     if (cat) {
       openCategoryMenu(chip, cat, store, refresh);
     }
