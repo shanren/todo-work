@@ -14,7 +14,11 @@ describe("createAutoCollapse", () => {
 
   it("开启时失焦满 5 分钟触发一次收起", () => {
     const onTimeout = vi.fn();
-    const ac = createAutoCollapse({ enabled: () => true, onTimeout, timeoutMs: FIVE_MIN });
+    const ac = createAutoCollapse({
+      enabled: () => true,
+      onTimeout,
+      timeoutMs: FIVE_MIN,
+    });
     ac.handleBlur();
     vi.advanceTimersByTime(FIVE_MIN - 1);
     expect(onTimeout).not.toHaveBeenCalled();
@@ -27,7 +31,11 @@ describe("createAutoCollapse", () => {
 
   it("超时前重新聚焦则取消计时", () => {
     const onTimeout = vi.fn();
-    const ac = createAutoCollapse({ enabled: () => true, onTimeout, timeoutMs: FIVE_MIN });
+    const ac = createAutoCollapse({
+      enabled: () => true,
+      onTimeout,
+      timeoutMs: FIVE_MIN,
+    });
     ac.handleBlur();
     vi.advanceTimersByTime(FIVE_MIN - 1000);
     ac.handleFocus();
@@ -38,7 +46,11 @@ describe("createAutoCollapse", () => {
   it("开关关闭时失焦不计时", () => {
     const onTimeout = vi.fn();
     let on = false;
-    const ac = createAutoCollapse({ enabled: () => on, onTimeout, timeoutMs: FIVE_MIN });
+    const ac = createAutoCollapse({
+      enabled: () => on,
+      onTimeout,
+      timeoutMs: FIVE_MIN,
+    });
     ac.handleBlur();
     vi.advanceTimersByTime(FIVE_MIN);
     expect(onTimeout).not.toHaveBeenCalled();
