@@ -1,7 +1,13 @@
 // 渲染层：从 AppState 全量重渲染（Spec §7，列表量级 <100 无需 diff）。
 // Task 7：事件委托（勾选/删除/行内编辑）、toast 撤销、添加栏、日期 meta、
 // 已完成组按 doneAt 倒序。Store 变更 → 单一 render() 重绘，输入框在 #list 之外故焦点不丢。
-import { buckets, isValidISODate, sortTodos, type Bucket, type Store } from "./state";
+import {
+  buckets,
+  isValidISODate,
+  sortTodos,
+  type Bucket,
+  type Store,
+} from "./state";
 import type { AppState, Category, Todo } from "./types";
 
 // ============================================================
@@ -51,7 +57,9 @@ function colorOf(todo: Todo, categories: Category[]): string {
 function diffDays(a: string, b: string): number {
   const [ay, am, ad] = a.split("-").map(Number);
   const [by, bm, bd] = b.split("-").map(Number);
-  return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86400000);
+  return Math.round(
+    (Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86400000,
+  );
 }
 
 function weekdayOf(iso: string): number {
@@ -86,7 +94,10 @@ export function fmtDue(
   }
   const days = diffDays(todo.dueDate, today);
   if (days <= 6) {
-    return { text: `周${WEEKDAYS[weekdayOf(todo.dueDate)]}${time}`, over: false };
+    return {
+      text: `周${WEEKDAYS[weekdayOf(todo.dueDate)]}${time}`,
+      over: false,
+    };
   }
   const [, m, d] = todo.dueDate.split("-").map(Number);
   return { text: `${m}/${d}${time}`, over: false };
@@ -126,7 +137,10 @@ function renderHeader(now: Date): void {
   if (!dateEl) {
     return;
   }
-  dateEl.replaceChildren(document.createTextNode(date), h("span", "w-week", week));
+  dateEl.replaceChildren(
+    document.createTextNode(date),
+    h("span", "w-week", week),
+  );
 }
 
 function renderChips(state: AppState): void {
@@ -146,7 +160,11 @@ function renderChips(state: AppState): void {
   chipsEl.replaceChildren(...chips);
 }
 
-function metaEl(todo: Todo, state: AppState, today: string): HTMLElement | null {
+function metaEl(
+  todo: Todo,
+  state: AppState,
+  today: string,
+): HTMLElement | null {
   const meta = h("div", "it-meta");
   const cat = state.categories.find((c) => c.id === todo.categoryId);
   if (cat) {
@@ -315,10 +333,7 @@ function startEdit(
       refresh();
       return;
     }
-    store
-      .updateTodo(todo.id, { title: val })
-      .then(refresh)
-      .catch(refresh);
+    store.updateTodo(todo.id, { title: val }).then(refresh).catch(refresh);
   };
   const cancel = () => {
     if (finished) {
@@ -340,11 +355,7 @@ function startEdit(
 }
 
 /** 删除 + 撤销：撤销用原始字段 addTodo 重建，再 reorder 恢复原位次 */
-function onDelete(
-  todo: Todo,
-  store: Store,
-  refresh: () => void,
-): void {
+function onDelete(todo: Todo, store: Store, refresh: () => void): void {
   const orig: Todo = { ...todo };
   store
     .deleteTodo(todo.id)
@@ -353,22 +364,30 @@ function onDelete(
       showToast("已删除", () => {
         const newId = crypto.randomUUID();
         store
-          .addTodo(newId, orig.title, orig.categoryId, orig.dueDate, orig.dueTime)
+          .addTodo(
+            newId,
+            orig.title,
+            orig.categoryId,
+            orig.dueDate,
+            orig.dueTime,
+          )
           .then(() => {
-            // 已完成项重建后为未完成态（add_todo 不接受 done），且不参与未完成排序
-            if (orig.done) {
-              return Promise.resolve();
-            }
-            const undone = store.state.todos
-              .filter((t) => !t.done)
-              .sort((a, b) => a.order - b.order);
-            const ids = undone.map((t) => t.id);
-            ids.splice(ids.indexOf(newId), 1);
-            const rank = undone.filter(
-              (t) => t.id !== newId && t.order < orig.order,
-            ).length;
-            ids.splice(rank, 0, newId);
-            return store.reorder(ids);
+            // 已完成项重建后需恢复完成态（add_todo 不接受 done，补一次 toggle）
+            const restored: Promise<unknown> = orig.done
+              ? store.toggleTodo(newId).then(() => undefined)
+              : Promise.resolve();
+            return restored.then(() => {
+              const undone = store.state.todos
+                .filter((t) => !t.done)
+                .sort((a, b) => a.order - b.order);
+              const ids = undone.map((t) => t.id);
+              ids.splice(ids.indexOf(newId), 1);
+              const rank = undone.filter(
+                (t) => t.id !== newId && t.order < orig.order,
+              ).length;
+              ids.splice(rank, 0, newId);
+              return store.reorder(ids);
+            });
           })
           .then(refresh)
           .catch(refresh);

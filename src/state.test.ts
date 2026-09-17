@@ -254,12 +254,21 @@ describe("删除撤销字段保真（Task 7，镜像 render.ts onDelete 撤销�
   const fakeAdd = async (cmd: string, args?: Record<string, unknown>) => {
     if (cmd === "add_todo") {
       const a = args as {
-        id: string; title: string; categoryId: string | null;
-        dueDate: string | null; dueTime: string | null;
+        id: string;
+        title: string;
+        categoryId: string | null;
+        dueDate: string | null;
+        dueTime: string | null;
       };
       // Rust 侧 order = todos.len()，前端随后 reorder 校正，故 999 无碍
-      return todo({ id: a.id, title: a.title, categoryId: a.categoryId,
-        dueDate: a.dueDate, dueTime: a.dueTime, order: 999 });
+      return todo({
+        id: a.id,
+        title: a.title,
+        categoryId: a.categoryId,
+        dueDate: a.dueDate,
+        dueTime: a.dueTime,
+        order: 999,
+      });
     }
     return undefined;
   };
@@ -269,21 +278,42 @@ describe("删除撤销字段保真（Task 7，镜像 render.ts onDelete 撤销�
     store.state = blankState();
     store.state.todos.push(
       todo({ id: "t0", title: "更早", order: 0 }),
-      todo({ id: "t1", title: "被删项", categoryId: "c1",
-        dueDate: "2026-09-17", dueTime: "14:00", order: 1 }),
+      todo({
+        id: "t1",
+        title: "被删项",
+        categoryId: "c1",
+        dueDate: "2026-09-17",
+        dueTime: "14:00",
+        order: 1,
+      }),
       todo({ id: "t2", title: "更晚", order: 2 }),
     );
     await store.deleteTodo("t1");
     expect(store.state.todos.map((t) => t.id)).toEqual(["t0", "t2"]);
 
-    const orig = { title: "被删项", categoryId: "c1",
-      dueDate: "2026-09-17", dueTime: "14:00", order: 1 };
+    const orig = {
+      title: "被删项",
+      categoryId: "c1",
+      dueDate: "2026-09-17",
+      dueTime: "14:00",
+      order: 1,
+    };
     const newId = "rebuild-1";
-    await store.addTodo(newId, orig.title, orig.categoryId, orig.dueDate, orig.dueTime);
-    const undone = store.state.todos.filter((t) => !t.done).sort((a, b) => a.order - b.order);
+    await store.addTodo(
+      newId,
+      orig.title,
+      orig.categoryId,
+      orig.dueDate,
+      orig.dueTime,
+    );
+    const undone = store.state.todos
+      .filter((t) => !t.done)
+      .sort((a, b) => a.order - b.order);
     const ids = undone.map((t) => t.id);
     ids.splice(ids.indexOf(newId), 1);
-    const rank = undone.filter((t) => t.id !== newId && t.order < orig.order).length;
+    const rank = undone.filter(
+      (t) => t.id !== newId && t.order < orig.order,
+    ).length;
     ids.splice(rank, 0, newId);
     await store.reorder(ids);
 
@@ -293,9 +323,12 @@ describe("删除撤销字段保真（Task 7，镜像 render.ts onDelete 撤销�
     expect(rebuilt.dueDate).toBe("2026-09-17");
     expect(rebuilt.dueTime).toBe("14:00");
     expect(rebuilt.order).toBe(1);
-    expect(store.state.todos
-      .filter((t) => !t.done).sort((a, b) => a.order - b.order)
-      .map((t) => t.id)).toEqual(["t0", newId, "t2"]);
+    expect(
+      store.state.todos
+        .filter((t) => !t.done)
+        .sort((a, b) => a.order - b.order)
+        .map((t) => t.id),
+    ).toEqual(["t0", newId, "t2"]);
   });
 
   it("撤销重建：被删项在首位时恢复到首位", async () => {
@@ -306,13 +339,29 @@ describe("删除撤销字段保真（Task 7，镜像 render.ts onDelete 撤销�
       todo({ id: "t1", order: 1 }),
     );
     await store.deleteTodo("t0");
-    const orig = { title: "x", categoryId: null, dueDate: null, dueTime: null, order: 0 };
+    const orig = {
+      title: "x",
+      categoryId: null,
+      dueDate: null,
+      dueTime: null,
+      order: 0,
+    };
     const newId = "rebuild-2";
-    await store.addTodo(newId, orig.title, orig.categoryId, orig.dueDate, orig.dueTime);
-    const undone = store.state.todos.filter((t) => !t.done).sort((a, b) => a.order - b.order);
+    await store.addTodo(
+      newId,
+      orig.title,
+      orig.categoryId,
+      orig.dueDate,
+      orig.dueTime,
+    );
+    const undone = store.state.todos
+      .filter((t) => !t.done)
+      .sort((a, b) => a.order - b.order);
     const ids = undone.map((t) => t.id);
     ids.splice(ids.indexOf(newId), 1);
-    const rank = undone.filter((t) => t.id !== newId && t.order < orig.order).length;
+    const rank = undone.filter(
+      (t) => t.id !== newId && t.order < orig.order,
+    ).length;
     ids.splice(rank, 0, newId);
     await store.reorder(ids);
     expect(store.state.todos.find((t) => t.id === newId)?.order).toBe(0);

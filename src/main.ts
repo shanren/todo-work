@@ -21,7 +21,9 @@ async function boot(): Promise<void> {
   if (demo) {
     // 演示模式：静态渲染样例数据；交互会触发真实 IPC，故不绑定
     state = demoState();
-    const mode: ThemeMode = isThemeMode(themeParam) ? themeParam : state.settings.theme;
+    const mode: ThemeMode = isThemeMode(themeParam)
+      ? themeParam
+      : state.settings.theme;
     applyTheme(mode);
     render(state);
     return;
@@ -34,7 +36,9 @@ async function boot(): Promise<void> {
     state = emptyState();
   }
 
-  const mode: ThemeMode = isThemeMode(themeParam) ? themeParam : state.settings.theme;
+  const mode: ThemeMode = isThemeMode(themeParam)
+    ? themeParam
+    : state.settings.theme;
   applyTheme(mode);
   watchSystemTheme(() => applyTheme(mode));
 
