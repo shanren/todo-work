@@ -1,0 +1,253 @@
+/* 结构样式：只消费 themes.css 的变量，任何主题差异都必须表达为变量。
+   结构与类名移植自 mockups/style-samples.html 的 .widget 骨架。 */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family:
+    "Segoe UI Variable", "Segoe UI", -apple-system, "PingFang SC",
+    "Microsoft YaHei UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  backdrop-filter: var(--bg-blur);
+  -webkit-backdrop-filter: var(--bg-blur);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  user-select: none;
+}
+
+/* ===== 头部 ===== */
+.w-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 4px;
+}
+.w-date {
+  font-size: 17px;
+  font-weight: 700;
+}
+.w-week {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.55;
+  margin-left: 6px;
+}
+.w-actions {
+  display: flex;
+  gap: 10px;
+  opacity: 0.45;
+  font-size: 14px;
+}
+
+/* ===== 分类 chips ===== */
+.chips {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+.chip {
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: default;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+}
+.chip.on {
+  background: var(--chip-on-bg);
+  color: var(--chip-on-text);
+  border: var(--chip-on-border);
+  font-weight: 600;
+}
+.chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+/* ===== 分组与条目 ===== */
+.sect-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 6px 16px 2px;
+  color: var(--sect-label);
+  flex-shrink: 0;
+}
+
+#list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.items {
+  padding: 2px 8px 6px;
+}
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.15s;
+  cursor: default;
+  border-bottom: var(--item-divider);
+}
+.item:hover {
+  background: var(--hover);
+}
+.item .bar {
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--muted);
+}
+.cb {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.6px solid var(--cb-border);
+  margin-top: 1px;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  font-size: 11px;
+}
+.item.done .cb {
+  background: var(--done);
+  border-color: var(--done);
+  color: #fff;
+}
+.it-main {
+  flex: 1;
+  min-width: 0;
+}
+.it-title {
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.item.done .it-title {
+  text-decoration: line-through;
+  opacity: 0.4;
+}
+.it-meta {
+  font-size: 11px;
+  opacity: 0.45;
+  margin-top: 2px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.it-meta .over {
+  color: var(--over);
+  opacity: 1;
+  font-weight: 500;
+}
+.it-del {
+  opacity: 0;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 6px;
+  transition: opacity 0.15s;
+  margin-top: 1px;
+}
+.item:hover .it-del {
+  opacity: 0.5;
+}
+.it-del:hover {
+  opacity: 1 !important;
+  background: rgba(229, 72, 77, 0.12);
+  color: var(--over);
+}
+
+/* ===== 添加栏 ===== */
+.add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 12px 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  opacity: 0.5;
+  cursor: text;
+  background: var(--add-bg);
+  border: var(--add-border);
+  flex-shrink: 0;
+}
+
+/* ===== 页脚 ===== */
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px 12px;
+  font-size: 11px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+.prog {
+  width: 64px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--prog-bg);
+  overflow: hidden;
+}
+.prog i {
+  display: block;
+  height: 100%;
+  background: var(--done);
+}
+
+/* ===== toast（Task 7 起使用） ===== */
+.toast {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--chip-on-bg);
+  color: var(--chip-on-text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.toast.show {
+  opacity: 0.92;
+}

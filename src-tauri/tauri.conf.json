@@ -13,9 +13,15 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "todo-app",
-        "width": 800,
-        "height": 600
+        "title": "待办",
+        "decorations": false,
+        "transparent": true,
+        "width": 340,
+        "height": 560,
+        "minHeight": 300,
+        "resizable": true,
+        "skipTaskbar": true,
+        "center": false
       }
     ],
     "security": {

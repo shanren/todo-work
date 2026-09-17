@@ -1,22 +1,42 @@
-import { invoke } from "@tauri-apps/api/core";
+// 装配层：加载状态 → 应用主题 → 渲染。交互逻辑自 Task 7 起加入。
+// URL 参数（仅开发调试，生产不可达）：
+//   ?theme=glass|paper|dark|system  临时覆盖主题
+//   ?demo=1                          使用内置样例数据（不落盘）
+import { Store, emptyState } from "./state";
+import type { AppState, ThemeMode } from "./types";
+import { applyTheme, watchSystemTheme } from "./themes";
+import { demoState, render } from "./render";
 
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
+const params = new URLSearchParams(window.location.search);
+const themeParam = params.get("theme");
+const demo = params.has("demo");
 
-async function greet() {
-  if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
+function isThemeMode(v: string | null): v is ThemeMode {
+  return v === "glass" || v === "paper" || v === "dark" || v === "system";
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
-});
+async function boot(): Promise<void> {
+  const store = new Store();
+  let state: AppState;
+  if (demo) {
+    state = demoState();
+  } else {
+    try {
+      await store.load();
+      state = store.state;
+    } catch {
+      // 浏览器直开（无 Tauri 运行时）时的兜底，正常路径不会走到
+      state = emptyState();
+    }
+  }
+
+  const mode: ThemeMode = isThemeMode(themeParam)
+    ? themeParam
+    : state.settings.theme;
+  applyTheme(mode);
+  watchSystemTheme(() => applyTheme(mode));
+
+  render(state);
+}
+
+window.addEventListener("DOMContentLoaded", boot);
