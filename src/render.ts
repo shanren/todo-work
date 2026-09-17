@@ -825,7 +825,13 @@ function bindAddBar(store: Store, refresh: () => void): void {
       return;
     }
     store
-      .addTodo(crypto.randomUUID(), title, activeCategoryId, selectedDueDate, null)
+      .addTodo(
+        crypto.randomUUID(),
+        title,
+        activeCategoryId,
+        selectedDueDate,
+        null,
+      )
       .then(() => {
         addInput.value = "";
         selectedDueDate = null;

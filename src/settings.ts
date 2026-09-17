@@ -35,7 +35,9 @@ function segmented<T extends string | number>(
     btn.className = o.value === current ? "seg-opt on" : "seg-opt";
     btn.textContent = o.text;
     btn.addEventListener("click", () => {
-      seg.querySelectorAll(".seg-opt").forEach((el) => el.classList.remove("on"));
+      seg
+        .querySelectorAll(".seg-opt")
+        .forEach((el) => el.classList.remove("on"));
       btn.classList.add("on");
       onPick(o.value);
     });
@@ -94,39 +96,54 @@ export function openSettingsPanel(
     head.append(title, x);
     popup.append(head);
 
-    segmented<ThemeMode>(row(popup, "主题").ctrl, [
-      { value: "system", text: "系统" },
-      { value: "glass", text: "毛玻璃" },
-      { value: "paper", text: "纸感" },
-      { value: "dark", text: "暗夜" },
-    ], s.theme, (theme) => {
-      store
-        .setSettings({ theme })
-        .then((st) => {
-          applyTheme(st.theme);
-          refresh();
-        })
-        .catch(refresh);
-    });
+    segmented<ThemeMode>(
+      row(popup, "主题").ctrl,
+      [
+        { value: "system", text: "系统" },
+        { value: "glass", text: "毛玻璃" },
+        { value: "paper", text: "纸感" },
+        { value: "dark", text: "暗夜" },
+      ],
+      s.theme,
+      (theme) => {
+        store
+          .setSettings({ theme })
+          .then((st) => {
+            applyTheme(st.theme);
+            refresh();
+          })
+          .catch(refresh);
+      },
+    );
 
-    segmented<number>(row(popup, "宽度").ctrl, [
-      { value: 300, text: "紧凑" },
-      { value: 340, text: "标准" },
-      { value: 380, text: "宽松" },
-    ], s.width, (width) => {
-      store
-        .setSettings({ width })
-        .then(() => resizeWindowTo(width).catch(refresh))
-        .then(refresh)
-        .catch(refresh);
-    });
+    segmented<number>(
+      row(popup, "宽度").ctrl,
+      [
+        { value: 300, text: "紧凑" },
+        { value: 340, text: "标准" },
+        { value: 380, text: "宽松" },
+      ],
+      s.width,
+      (width) => {
+        store
+          .setSettings({ width })
+          .then(() => resizeWindowTo(width).catch(refresh))
+          .then(refresh)
+          .catch(refresh);
+      },
+    );
 
     toggle(row(popup, "开机自启").ctrl, "登录时静默启动", s.autoStart, (v) => {
       store.setSettings({ autoStart: v }).then(refresh).catch(refresh);
     });
 
-    toggle(row(popup, "失焦自动收起").ctrl, "失焦 5 分钟后收起到托盘", s.autoCollapse, (v) => {
-      store.setSettings({ autoCollapse: v }).then(refresh).catch(refresh);
-    });
+    toggle(
+      row(popup, "失焦自动收起").ctrl,
+      "失焦 5 分钟后收起到托盘",
+      s.autoCollapse,
+      (v) => {
+        store.setSettings({ autoCollapse: v }).then(refresh).catch(refresh);
+      },
+    );
   });
 }

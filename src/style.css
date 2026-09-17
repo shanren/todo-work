@@ -104,6 +104,11 @@ body {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  /* 隐藏滚动条，保留滚轮滚动（用户要求） */
+  scrollbar-width: none;
+}
+#list::-webkit-scrollbar {
+  display: none;
 }
 
 .items {
@@ -433,7 +438,9 @@ body {
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 6px;
-  transition: opacity 0.15s, background 0.15s;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
 }
 .w-actions span:hover {
   opacity: 1;
@@ -462,7 +469,9 @@ body {
   background: var(--add-bg);
   border: var(--add-border);
   cursor: pointer;
-  transition: opacity 0.15s, background 0.15s;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
 }
 .add-date:hover {
   color: var(--text);
@@ -584,7 +593,9 @@ body {
   color: var(--chip-text);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .seg-opt.on {
   background: var(--chip-on-bg);
@@ -611,7 +622,9 @@ body {
   border-radius: 12px;
   background: var(--cb-border);
   opacity: 0.55;
-  transition: background 0.18s, opacity 0.18s;
+  transition:
+    background 0.18s,
+    opacity 0.18s;
   flex-shrink: 0;
 }
 .switch.on {
