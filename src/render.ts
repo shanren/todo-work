@@ -14,6 +14,7 @@ import type { AppState, Category, Todo } from "./types";
 import { bindDragAndDrop } from "./drag";
 import { collapseWindow, listenEvent } from "./bridge";
 import { openSettingsPanel } from "./settings";
+import { openSortMenu } from "./sortMenu";
 
 // localTodayISO 已收编至 state.ts（drag.ts 亦需使用）；此处保留导出兼容旧引用
 export { localTodayISO };
@@ -811,6 +812,12 @@ export function initApp(store: Store): void {
     const anchor = document.getElementById("btn-settings");
     if (anchor) {
       openSettingsPanel(anchor, store, refresh);
+    }
+  });
+  document.getElementById("btn-sort")?.addEventListener("click", () => {
+    const anchor = document.getElementById("btn-sort");
+    if (anchor) {
+      openSortMenu(anchor, store, refresh);
     }
   });
   render(store.state);

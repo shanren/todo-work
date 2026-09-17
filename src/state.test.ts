@@ -494,4 +494,45 @@ describe("setSettings（Task 9：autoCollapse 持久化透传）", () => {
       patch: { autoCollapse: true },
     });
   });
+
+  it("sortMode 切换：透传 set_settings、本地镜像更新且镜像排序结果随模式变化", async () => {
+    const invoke = vi.fn().mockImplementation(async (_cmd, args) => ({
+      ...baseSettings(),
+      ...args.patch,
+    }));
+    const store = new Store(invoke);
+    store.state = {
+      version: 1,
+      categories: [],
+      todos: [
+        todo({ id: "a", order: 1 }),
+        todo({ id: "b", dueDate: "2026-09-16", order: 0 }),
+      ],
+      settings: baseSettings(),
+    };
+    const st = await store.setSettings({ sortMode: "due" });
+    expect(st.sortMode).toBe("due");
+    expect(store.state.settings.sortMode).toBe("due");
+    expect(invoke).toHaveBeenCalledWith("set_settings", {
+      patch: { sortMode: "due" },
+    });
+    // 切到 due 后：昨天到期项排到 manual 首位（order 1）之前
+    expect(sortTodos(store.state.todos, "due").map((t) => t.id)).toEqual([
+      "b",
+      "a",
+    ]);
+  });
 });
+
+function baseSettings(): AppState["settings"] {
+  return {
+    theme: "glass",
+    width: 340,
+    posX: null,
+    posY: null,
+    autoStart: true,
+    autoCollapse: false,
+    sortMode: "manual",
+    showOnBootOnlyToday: true,
+  };
+}

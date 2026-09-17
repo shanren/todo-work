@@ -50,17 +50,20 @@ pub fn run() {
                 window::attach_moved_listener(&win, sink);
             }
 
-            // 开机判定：有今日/过期待办（或开关关闭）才显示主窗，否则仅托盘
+            // 开机判定：有今日/过期待办（或开关关闭）才显示主窗，否则销毁仅留托盘
+            // （tauri.conf.json 初始窗口 visible:false，避免无待办时的窗口闪烁）
             {
                 let state = app.state::<Mutex<State>>();
                 let show = {
                     let st = state.lock().map_err(|_| "状态锁被占用")?;
                     today::should_show_on_boot(&st, chrono::Local::now().date_naive())
                 };
-                if show {
-                    if let Some(win) = window::main_window(app.handle()) {
+                if let Some(win) = window::main_window(app.handle()) {
+                    if show {
                         let _ = win.show();
                         let _ = win.set_focus();
+                    } else {
+                        let _ = win.close();
                     }
                 }
             }
@@ -80,6 +83,15 @@ pub fn run() {
             commands::quick_add,
             commands::collapse,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|_app, event| {
+            // 收起/开机无待办会销毁窗口；最后一个窗口关闭时默认退出会连带托盘，
+            // 故仅拦截"无退出码"的退出请求（app.exit(0) 带码，托盘退出不受影响）
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                if code.is_none() {
+                    api.prevent_exit();
+                }
+            }
+        });
 }

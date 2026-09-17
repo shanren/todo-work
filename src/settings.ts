@@ -118,7 +118,7 @@ export function openSettingsPanel(
       store.setSettings({ autoStart: v }).then(refresh).catch(refresh);
     });
 
-    buildSwitch(popup, "失焦自动收起", s.autoCollapse, (v) => {
+    buildSwitch(popup, "失焦 5 分钟后自动收起", s.autoCollapse, (v) => {
       store.setSettings({ autoCollapse: v }).then(refresh).catch(refresh);
     });
 

@@ -5,6 +5,7 @@
 import { Store, emptyState } from "./state";
 import type { AppState, ThemeMode } from "./types";
 import { applyTheme, watchSystemTheme } from "./themes";
+import { bindAutoCollapse } from "./autoCollapse";
 import { demoState, initApp, render } from "./render";
 
 const params = new URLSearchParams(window.location.search);
@@ -43,6 +44,7 @@ async function boot(): Promise<void> {
   watchSystemTheme(() => applyTheme(mode));
 
   initApp(store);
+  bindAutoCollapse(store);
 }
 
 window.addEventListener("DOMContentLoaded", boot);

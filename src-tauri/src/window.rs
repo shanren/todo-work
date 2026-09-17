@@ -349,9 +349,10 @@ pub fn sync_autostart(app: &AppHandle, on: bool) -> Result<(), String> {
     }
     #[cfg(not(debug_assertions))]
     {
-        let al = app
-            .autolaunch()
-            .map_err(|e| format!("自启插件不可用: {e}"))?;
+        // ManagerExt：autolaunch() 返回 State<AutoLaunchManager>（非 Result，勿再加 map_err）。
+        // 仅 release 编译写系统自启，dev 下不触发注册表写入。
+        use tauri_plugin_autostart::ManagerExt;
+        let al = app.autolaunch();
         let r = if on { al.enable() } else { al.disable() };
         r.map_err(|e| format!("写系统自启失败: {e}"))?;
     }
