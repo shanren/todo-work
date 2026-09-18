@@ -56,17 +56,42 @@ pub fn restore_window(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// 定位：记忆位置优先，否则右上角（主显示器逻辑坐标）。
+/// 定位：记忆位置优先（仅当仍落在某个现存显示器内），否则主屏右上角。
 pub fn apply_placement(app: &AppHandle, win: &WebviewWindow) -> Result<(), String> {
+    use tauri::Manager;
     let (pos_x, pos_y, width) = {
         let state = app.state::<Mutex<State>>();
         let s = state.lock().map_err(|_| "状态锁被占用".to_string())?;
         (s.settings.pos_x, s.settings.pos_y, s.settings.width)
     };
     if let (Some(x), Some(y)) = (pos_x, pos_y) {
-        return win
-            .set_position(PhysicalPosition::new(x as i32, y as i32))
-            .map_err(|e| format!("应用记忆位置失败: {e}"));
+        let monitors: Vec<(i32, i32, u32, u32)> = app
+            .available_monitors()
+            .map_err(|e| format!("获取显示器列表失败: {e}"))?
+            .iter()
+            .map(|m| {
+                let p = m.position();
+                let s = m.size();
+                (p.x, p.y, s.width, s.height)
+            })
+            .collect();
+        if is_position_visible(x, y, &monitors) {
+            return win
+                .set_position(PhysicalPosition::new(x as i32, y as i32))
+                .map_err(|e| format!("应用记忆位置失败: {e}"));
+        }
+        // 记忆位置已不在任何现存显示器（如拔掉外接屏）→ 清除记忆，回退到主屏右上角
+        {
+            let state = app.state::<Mutex<State>>();
+            let locked = state.lock();
+            if let Ok(mut s) = locked {
+                s.settings.pos_x = None;
+                s.settings.pos_y = None;
+                if let Ok(dir) = app.path().app_data_dir() {
+                    let _ = s.save(&dir);
+                }
+            }
+        }
     }
     let monitor = app
         .primary_monitor()
@@ -76,6 +101,48 @@ pub fn apply_placement(app: &AppHandle, win: &WebviewWindow) -> Result<(), Strin
     let x = logical_w - f64::from(width) - EDGE;
     win.set_position(tauri::LogicalPosition::new(x, EDGE))
         .map_err(|e| format!("应用右上角定位失败: {e}"))
+}
+
+/// 纯函数：左上角坐标是否落在任一显示器的边界内（容差 8px，窗口至少露出一角）。
+fn is_position_visible(x: f64, y: f64, monitors: &[(i32, i32, u32, u32)]) -> bool {
+    const TOLERANCE: f64 = 8.0;
+    monitors.iter().any(|(mx, my, mw, mh)| {
+        let right = f64::from(*mx) + f64::from(*mw);
+        let bottom = f64::from(*my) + f64::from(*mh);
+        x >= f64::from(*mx) - TOLERANCE
+            && y >= f64::from(*my) - TOLERANCE
+            && x < right
+            && y < bottom
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_position_visible;
+    // 主屏 1920x1080 原点 0,0；副屏 2560x1440 位于主屏右侧 1920,0
+    const DUAL: [(i32, i32, u32, u32); 2] = [(0, 0, 1920, 1080), (1920, 0, 2560, 1440)];
+    const SINGLE: [(i32, i32, u32, u32); 1] = [(0, 0, 1920, 1080)];
+
+    #[test]
+    fn dual_screen_saved_pos_ok_while_both_exist() {
+        assert!(is_position_visible(3524.0, 16.0, &DUAL));
+    }
+
+    #[test]
+    fn single_screen_rejects_second_monitor_pos() {
+        // 单屏后，原副屏上的记忆位置越界
+        assert!(!is_position_visible(3524.0, 16.0, &SINGLE));
+    }
+
+    #[test]
+    fn primary_corner_still_visible() {
+        assert!(is_position_visible(1564.0, 16.0, &SINGLE));
+    }
+
+    #[test]
+    fn slightly_offscreen_within_tolerance_is_visible() {
+        assert!(is_position_visible(-4.0, 16.0, &SINGLE));
+    }
 }
 
 // ============================================================

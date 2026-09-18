@@ -484,10 +484,7 @@ function bindListEvents(store: Store, refresh: () => void): void {
     }
     if (target.closest(".it-due")) {
       openDatePopup(target as HTMLElement, todo.dueDate, (v) => {
-        store
-          .updateTodo(todo.id, { dueDate: v })
-          .then(refresh)
-          .catch(refresh);
+        store.updateTodo(todo.id, { dueDate: v }).then(refresh).catch(refresh);
       });
       return;
     }
