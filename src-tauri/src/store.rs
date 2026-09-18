@@ -98,6 +98,8 @@ impl State {
 
     /// 原子写 + 滚动备份：每次保存前将 store.json → .1 → .2 … → .5（保留最近 BACKUP_COUNT 份）
     pub fn save(&self, dir: &Path) -> io::Result<()> {
+        // 首次运行/重装后数据目录可能不存在（卸载器会清除应用数据）
+        fs::create_dir_all(dir)?;
         let main = dir.join(Self::FILE);
         if main.exists() {
             for i in (1..Self::BACKUP_COUNT).rev() {
@@ -207,6 +209,17 @@ mod tests {
         let (loaded, warn) = State::load(&dir).unwrap();
         assert!(warn.is_some(), "应返回恢复提示");
         assert_eq!(loaded, s);
+    }
+
+    #[test]
+    fn save_creates_missing_dir() {
+        // 重装后数据目录不存在：save 必须自建目录而不是失败（用户验收发现）
+        let base = tmpdir("mkdir");
+        let dir = base.join("nested/deeper");
+        State::default().save(&dir).unwrap();
+        assert!(dir.join("store.json").exists());
+        let (loaded, warn) = State::load(&dir).unwrap();
+        assert!(warn.is_none());
     }
 
     #[test]

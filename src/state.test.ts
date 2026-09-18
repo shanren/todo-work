@@ -550,11 +550,17 @@ describe("nextSaturdayISO（本周末快捷项）", () => {
 
 describe("isDoneToday（主列表只显示今日完成）", () => {
   it("今天完成 → true", () =>
-    expect(isDoneToday(todo({ done: true, doneAt: "2026-09-17T10:00:00Z" }), TODAY)).toBe(true));
+    expect(
+      isDoneToday(todo({ done: true, doneAt: "2026-09-17T10:00:00Z" }), TODAY),
+    ).toBe(true));
   it("昨天完成 → false（进历史）", () =>
-    expect(isDoneToday(todo({ done: true, doneAt: "2026-09-16T10:00:00Z" }), TODAY)).toBe(false));
+    expect(
+      isDoneToday(todo({ done: true, doneAt: "2026-09-16T10:00:00Z" }), TODAY),
+    ).toBe(false));
   it("doneAt 缺失 → false", () =>
     expect(isDoneToday(todo({ done: true }), TODAY)).toBe(false));
   it("未完成 → false", () =>
-    expect(isDoneToday(todo({ done: false, doneAt: "2026-09-17T10:00:00Z" }), TODAY)).toBe(false));
+    expect(
+      isDoneToday(todo({ done: false, doneAt: "2026-09-17T10:00:00Z" }), TODAY),
+    ).toBe(false));
 });

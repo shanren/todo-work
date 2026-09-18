@@ -962,7 +962,11 @@ function bindAddBar(store: Store, refresh: () => void): void {
         setDateLabel(null);
         refresh();
       })
-      .catch(refresh);
+      .catch(() => {
+        // 不再静默：落盘失败（如磁盘/权限问题）时明确告知，本地回滚已由 Store 完成
+        showToast("添加失败：数据写入失败");
+        refresh();
+      });
   });
 }
 
