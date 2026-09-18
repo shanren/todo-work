@@ -60,7 +60,7 @@ impl Default for Settings {
             pos_x: None,
             pos_y: None,
             auto_start: true,
-            auto_collapse: false,
+            auto_collapse: true,
             sort_mode: "manual".into(),
             show_on_boot_only_today: true,
         }

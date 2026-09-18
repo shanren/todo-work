@@ -139,7 +139,7 @@ export function openSettingsPanel(
 
     toggle(
       row(popup, "失焦自动收起").ctrl,
-      "失焦 5 分钟后收起到托盘",
+      "失焦 1 分钟后收起到托盘",
       s.autoCollapse,
       (v) => {
         store.setSettings({ autoCollapse: v }).then(refresh).catch(refresh);

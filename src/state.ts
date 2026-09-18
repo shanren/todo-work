@@ -12,6 +12,11 @@ export function localTodayISO(now = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/** 是否今日完成（doneAt 的日期部分等于 today）。主列表只显示今日完成，更早的进历史视图。 */
+export function isDoneToday(t: Todo, today: string): boolean {
+  return t.done && (t.doneAt ?? "").slice(0, 10) === today;
+}
+
 /** 下一个即将到来的周六（含今天若是周六）的 ISO 日期。用于「本周末」快捷项。 */
 export function nextSaturdayISO(today: string): string {
   const [y, m, d] = today.split("-").map(Number);

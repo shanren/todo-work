@@ -4,6 +4,7 @@
 import {
   activeCategoryAfterDelete,
   buckets,
+  isDoneToday,
   isValidISODate,
   localTodayISO,
   nextSaturdayISO,
@@ -249,6 +250,11 @@ function renderList(state: AppState, today: string): void {
       continue;
     }
     if (bucket === "done") {
+      // 主列表只显示今日完成的；更早的进历史视图（头部 🕘）
+      todos = todos.filter((t) => isDoneToday(t, today));
+      if (todos.length === 0) {
+        continue;
+      }
       // 已完成组内按 doneAt 倒序（最近完成的在上）
       todos = [...todos].sort((a, b) =>
         (b.doneAt ?? "").localeCompare(a.doneAt ?? ""),
@@ -290,9 +296,91 @@ function renderFooter(state: AppState, today: string): void {
   }
 }
 
+/** 已完成历史视图：按完成日期倒序分组；条目可取消完成（回到主列表）或删除。 */
+function renderHistory(state: AppState, today: string): void {
+  const listEl = document.querySelector<HTMLElement>("#list");
+  const chipsEl = document.querySelector<HTMLElement>("#chips");
+  const addWrap = document.querySelector<HTMLElement>(".add-wrap");
+  if (chipsEl) {
+    chipsEl.style.display = "none";
+  }
+  if (addWrap) {
+    addWrap.style.display = "none";
+  }
+  if (!listEl) {
+    return;
+  }
+  const frag = document.createDocumentFragment();
+
+  // 视图头：返回 + 标题
+  const head = h("div", "hist-head");
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "hist-back";
+  back.textContent = "← 返回";
+  back.addEventListener("click", () => {
+    view = "main";
+    render(state);
+  });
+  head.append(back, h("span", "hist-title", "已完成历史"));
+  frag.append(head);
+
+  // 已完成（全部，含今日），按 doneAt 日期倒序分组
+  const done = state.todos
+    .filter((t) => t.done)
+    .sort((a, b) => (b.doneAt ?? "").localeCompare(a.doneAt ?? ""));
+  if (done.length === 0) {
+    frag.append(h("div", "empty-hint", "还没有已完成记录"));
+  } else {
+    let lastDate = "";
+    let wrap: HTMLElement | null = null;
+    for (const t of done) {
+      const day = (t.doneAt ?? "").slice(0, 10);
+      if (day !== lastDate) {
+        lastDate = day;
+        frag.append(h("div", "sect-label", histDayLabel(day, today)));
+        wrap = h("div", "items");
+        frag.append(wrap);
+      }
+      wrap?.append(itemEl(t, state, today));
+    }
+  }
+  listEl.replaceChildren(frag);
+
+  const countEl = document.querySelector<HTMLSpanElement>("#foot-count");
+  if (countEl) {
+    countEl.textContent = `历史 ${done.length} 条`;
+  }
+  const prog = document.querySelector<HTMLElement>("#prog-fill");
+  if (prog) {
+    prog.style.width = "0%";
+  }
+}
+
+/** 历史分组标签：今天 / 昨天 / 9月15日 */
+function histDayLabel(day: string, today: string): string {
+  if (day === today) {
+    return "今天";
+  }
+  const [, m, d] = day.split("-").map(Number);
+  const prev = new Date();
+  prev.setDate(prev.getDate() - 1);
+  const py = prev.getFullYear();
+  const pm = String(prev.getMonth() + 1).padStart(2, "0");
+  const pd = String(prev.getDate()).padStart(2, "0");
+  if (day === `${py}-${pm}-${pd}`) {
+    return "昨天";
+  }
+  return `${m}月${d}日`;
+}
+
 export function render(state: AppState): void {
   const today = localTodayISO();
   renderHeader(new Date());
+  if (view === "history") {
+    renderHistory(state, today);
+    return;
+  }
   renderChips(state);
   renderList(state, today);
   renderFooter(state, today);
@@ -307,6 +395,9 @@ let toastTimer: number | undefined;
 
 /** 当前选中的分类（chips 过滤 + 添加栏归属）；null = "全部" */
 let activeCategoryId: string | null = null;
+
+/** 当前视图：main = 待办主列表；history = 已完成历史（头条 🕘 切换） */
+let view: "main" | "history" = "main";
 
 function hideToast(): void {
   if (toastTimer !== undefined) {
@@ -834,13 +925,19 @@ function openDatePopup(
 function bindAddBar(store: Store, refresh: () => void): void {
   const addInput = document.querySelector<HTMLInputElement>("#add-input");
   const dateBtn = document.querySelector<HTMLButtonElement>("#btn-date");
+  const dateLabel = document.querySelector<HTMLSpanElement>("#date-label");
   if (!addInput || !dateBtn) {
     return;
   }
+  const setDateLabel = (v: string | null): void => {
+    if (dateLabel) {
+      dateLabel.textContent = v === null ? "" : dueLabel(v);
+    }
+  };
   dateBtn.addEventListener("click", () => {
     openDatePopup(dateBtn, selectedDueDate, (v) => {
       selectedDueDate = v;
-      dateBtn.textContent = v === null ? "日" : dueLabel(v);
+      setDateLabel(v);
     });
   });
   addInput.addEventListener("keydown", (e) => {
@@ -862,7 +959,7 @@ function bindAddBar(store: Store, refresh: () => void): void {
       .then(() => {
         addInput.value = "";
         selectedDueDate = null;
-        dateBtn.textContent = "日";
+        setDateLabel(null);
         refresh();
       })
       .catch(refresh);
@@ -925,6 +1022,14 @@ export function initApp(store: Store): void {
   });
   // 禁用 WebView 默认右键菜单（刷新/检查等）；chips 的自定义右键菜单在捕获前已自行 preventDefault 并打开
   document.addEventListener("contextmenu", (e) => e.preventDefault());
+  // 已完成历史视图切换（🕘）；进入历史时若分类过滤开着则先回"全部"
+  document.getElementById("btn-history")?.addEventListener("click", () => {
+    view = view === "history" ? "main" : "history";
+    if (view === "history") {
+      activeCategoryId = null;
+    }
+    render(store.state);
+  });
   render(store.state);
 }
 

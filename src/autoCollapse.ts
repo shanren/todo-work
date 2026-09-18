@@ -1,4 +1,4 @@
-// 失焦自动收起（Task 10）：窗口失焦持续 5 分钟 → collapse（Rust 销毁窗口）。
+// 失焦自动收起（Task 10）：窗口失焦持续 1 分钟 → collapse（Rust 销毁窗口）。
 // 计时纯逻辑与浏览器接线分离，便于 fake timers 单测；开关在事件时刻读取（设置面板即时生效）。
 import { collapseWindow } from "./bridge";
 
@@ -51,7 +51,7 @@ export function bindAutoCollapse(store: {
   const ac = createAutoCollapse({
     enabled: () => store.state.settings.autoCollapse,
     onTimeout: () => collapseWindow().catch(() => undefined),
-    timeoutMs: 5 * 60 * 1000,
+    timeoutMs: 60 * 1000,
   });
   window.addEventListener("blur", () => ac.handleBlur());
   window.addEventListener("focus", () => ac.handleFocus());

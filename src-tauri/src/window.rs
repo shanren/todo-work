@@ -40,7 +40,7 @@ pub fn restore_window(app: &AppHandle) -> Result<(), String> {
         MAIN_LABEL,
         WebviewUrl::App("index.html".into()),
     )
-    .title("待办")
+    .title("Todo")
     .inner_size(f64::from(width), DEFAULT_HEIGHT)
     .decorations(false)
     .transparent(true)
@@ -322,7 +322,7 @@ pub fn create_tray(app: &tauri::App) -> Result<(), String> {
         .icon(icon)
         .menu(&menu)
         .show_menu_on_left_click(false)
-        .tooltip("待办")
+        .tooltip("Todo")
         .on_tray_icon_event(|tray: &tauri::tray::TrayIcon<Wry>, event| {
             // 左键抬起 = 显示/聚焦主窗
             if let TrayIconEvent::Click {
@@ -404,7 +404,7 @@ pub fn refresh_badge(app: &AppHandle) {
             .count()
     };
     if let Some(tray) = app.tray_by_id("main-tray") {
-        let _ = tray.set_tooltip(Some(format!("待办 · 今日剩余 {n}")));
+        let _ = tray.set_tooltip(Some(format!("Todo · 今日剩余 {n}")));
     }
 }
 

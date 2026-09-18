@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "todo-app",
+  "productName": "Todo",
   "version": "0.1.0",
   "identifier": "com.hkzln.todo-app",
   "build": {
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "待办",
+        "title": "Todo",
         "decorations": false,
         "transparent": true,
         "width": 340,

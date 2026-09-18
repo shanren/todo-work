@@ -669,3 +669,44 @@ body {
 .it-due-none:hover {
   opacity: 1 !important;
 }
+
+/* ===== Task 11：历史视图 + 时钟图标 ===== */
+.clock-ico {
+  display: block;
+  flex-shrink: 0;
+}
+#date-label {
+  white-space: nowrap;
+}
+.add-date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.hist-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 4px;
+}
+.hist-back {
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--chip-bg);
+  border: var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.hist-back:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.hist-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
