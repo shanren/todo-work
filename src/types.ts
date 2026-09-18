@@ -43,8 +43,10 @@ export interface Settings {
   posX: number | null;
   posY: number | null;
   autoStart: boolean;
-  /** 失焦自动收起（Task 9 仅 UI + 持久化，监听在 Task 10） */
+  /** 失焦自动收起开关 */
   autoCollapse: boolean;
+  /** 失焦自动收起延时（分钟），1–120 */
+  autoCollapseMinutes: number;
   sortMode: SortMode;
   showOnBootOnlyToday: boolean;
 }

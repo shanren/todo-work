@@ -134,6 +134,7 @@ export interface SettingsPatch {
   posY?: number | null;
   autoStart?: boolean;
   autoCollapse?: boolean;
+  autoCollapseMinutes?: number;
   sortMode?: SortMode;
   showOnBootOnlyToday?: boolean;
 }
@@ -160,7 +161,8 @@ export function emptyState(): AppState {
       posX: null,
       posY: null,
       autoStart: true,
-      autoCollapse: false,
+      autoCollapse: true,
+      autoCollapseMinutes: 1,
       sortMode: "manual",
       showOnBootOnlyToday: true,
     },

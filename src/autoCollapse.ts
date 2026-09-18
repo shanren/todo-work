@@ -6,7 +6,8 @@ export interface AutoCollapseOpts {
   /** 每次失焦时读取；false 则本次失焦不计时 */
   enabled: () => boolean;
   onTimeout: () => void;
-  timeoutMs: number;
+  /** 超时时长（毫秒）；传函数则每次失焦时实时求值（支持设置即时变更） */
+  timeoutMs: number | (() => number);
 }
 
 export interface AutoCollapse {
@@ -30,10 +31,12 @@ export function createAutoCollapse(opts: AutoCollapseOpts): AutoCollapse {
       if (!opts.enabled()) {
         return;
       }
+      // 时长在失焦时刻实时求值：设置面板改时长后无需重启即生效
+      const ms = typeof opts.timeoutMs === "function" ? opts.timeoutMs() : opts.timeoutMs;
       timer = setTimeout(() => {
         timer = null;
         opts.onTimeout();
-      }, opts.timeoutMs);
+      }, ms);
     },
     handleFocus(): void {
       clear();
@@ -44,14 +47,14 @@ export function createAutoCollapse(opts: AutoCollapseOpts): AutoCollapse {
   };
 }
 
-/** main.ts 接线：window focus/blur → 计时控制；enabled 读 store 最新设置。 */
+/** main.ts 接线：window focus/blur → 计时控制；开关与时长都在失焦时刻实时读取（设置面板即时生效）。 */
 export function bindAutoCollapse(store: {
-  state: { settings: { autoCollapse: boolean } };
+  state: { settings: { autoCollapse: boolean; autoCollapseMinutes: number } };
 }): void {
   const ac = createAutoCollapse({
     enabled: () => store.state.settings.autoCollapse,
     onTimeout: () => collapseWindow().catch(() => undefined),
-    timeoutMs: 60 * 1000,
+    timeoutMs: () => store.state.settings.autoCollapseMinutes * 60 * 1000,
   });
   window.addEventListener("blur", () => ac.handleBlur());
   window.addEventListener("focus", () => ac.handleFocus());

@@ -33,6 +33,10 @@ pub struct Category {
     pub order: i64,
 }
 
+fn default_auto_collapse_minutes() -> u32 {
+    1
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -44,9 +48,12 @@ pub struct Settings {
     pub pos_x: Option<f64>,
     pub pos_y: Option<f64>,
     pub auto_start: bool,
-    /// 失焦自动收起（Task 9 仅 UI + 持久化，监听接线在 Task 10）
+    /// 失焦自动收起开关
     #[serde(default)]
     pub auto_collapse: bool,
+    /// 失焦自动收起延时（分钟）；旧数据无此字段时默认 1
+    #[serde(default = "default_auto_collapse_minutes")]
+    pub auto_collapse_minutes: u32,
     /// manual | due | category | created
     pub sort_mode: String,
     pub show_on_boot_only_today: bool,
@@ -61,6 +68,7 @@ impl Default for Settings {
             pos_y: None,
             auto_start: true,
             auto_collapse: true,
+            auto_collapse_minutes: 1,
             sort_mode: "manual".into(),
             show_on_boot_only_today: true,
         }
@@ -191,7 +199,7 @@ mod tests {
         assert!(raw.contains("\"categoryId\""), "categoryId 键应为 camelCase");
         assert!(!raw.contains("due_date"), "不应出现 snake_case 键");
         assert!(!raw.contains("category_id"), "不应出现 snake_case 键");
-        let (loaded, warn) = State::load(&dir).unwrap();
+        let (_, warn) = State::load(&dir).unwrap();
         assert!(warn.is_none());
         assert_eq!(loaded.todos[0].title, "测试");
         assert_eq!(loaded.todos[0].due_date.as_deref(), Some("2026-09-17"));
@@ -206,7 +214,7 @@ mod tests {
         let good = fs::read(dir.join("store.json")).unwrap();
         fs::write(dir.join("store.json.1"), &good).unwrap();
         fs::write(dir.join("store.json"), b"{broken").unwrap();
-        let (loaded, warn) = State::load(&dir).unwrap();
+        let (_, warn) = State::load(&dir).unwrap();
         assert!(warn.is_some(), "应返回恢复提示");
         assert_eq!(loaded, s);
     }
@@ -218,7 +226,7 @@ mod tests {
         let dir = base.join("nested/deeper");
         State::default().save(&dir).unwrap();
         assert!(dir.join("store.json").exists());
-        let (loaded, warn) = State::load(&dir).unwrap();
+        let (_, warn) = State::load(&dir).unwrap();
         assert!(warn.is_none());
     }
 

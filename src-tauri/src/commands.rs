@@ -193,6 +193,7 @@ pub struct SettingsPatch {
     pub pos_y: Option<Option<f64>>,
     pub auto_start: Option<bool>,
     pub auto_collapse: Option<bool>,
+    pub auto_collapse_minutes: Option<u32>,
     pub sort_mode: Option<String>,
     pub show_on_boot_only_today: Option<bool>,
 }
@@ -249,6 +250,9 @@ pub mod patch_ops {
         }
         if let Some(v) = patch.auto_collapse {
             s.auto_collapse = v;
+        }
+        if let Some(v) = patch.auto_collapse_minutes {
+            s.auto_collapse_minutes = v.clamp(1, 120);
         }
         if let Some(v) = patch.sort_mode {
             s.sort_mode = v;

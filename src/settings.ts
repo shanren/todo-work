@@ -137,12 +137,24 @@ export function openSettingsPanel(
       store.setSettings({ autoStart: v }).then(refresh).catch(refresh);
     });
 
-    toggle(
+    // 失焦自动收起：关 / 1 / 3 / 5 分钟（分段选择，关 = 不自动收起）
+    segmented<number>(
       row(popup, "失焦自动收起").ctrl,
-      "失焦 1 分钟后收起到托盘",
-      s.autoCollapse,
+      [
+        { value: 0, text: "关" },
+        { value: 1, text: "1 分" },
+        { value: 3, text: "3 分" },
+        { value: 5, text: "5 分" },
+      ],
+      s.autoCollapse ? s.autoCollapseMinutes : 0,
       (v) => {
-        store.setSettings({ autoCollapse: v }).then(refresh).catch(refresh);
+        store
+          .setSettings({
+            autoCollapse: v > 0,
+            autoCollapseMinutes: v > 0 ? v : 1,
+          })
+          .then(refresh)
+          .catch(refresh);
       },
     );
   });

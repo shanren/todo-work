@@ -1085,6 +1085,7 @@ export function demoState(): AppState {
       posY: null,
       autoStart: true,
       autoCollapse: false,
+      autoCollapseMinutes: 1,
       sortMode: "manual",
       showOnBootOnlyToday: true,
     },
