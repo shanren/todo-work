@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/themes.css" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>待办</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <header class="w-head" data-tauri-drag-region>
+      <div class="w-date" id="date" data-tauri-drag-region></div>
+      <div class="w-actions"><span id="btn-history" title="已完成历史">🕘</span><span id="btn-settings" title="设置">⚙</span><span id="btn-collapse-top" title="收起到托盘">—</span></div>
+    </header>
+
+    <nav class="chips" id="chips"></nav>
+
+    <main id="list"></main>
+
+    <div class="add-wrap">
+      <input id="add-input" class="add" type="text" placeholder="＋ 添加待办，回车确认" />
+      <button id="btn-date" class="add-date" type="button" title="选择日期">
+        <svg class="clock-ico" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.3 1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="date-label"></span>
+      </button>
+    </div>
+
+    <footer class="foot">
+      <span id="foot-count"></span>
+      <div class="prog"><i id="prog-fill" style="width: 0%"></i></div>
+      <span id="btn-collapse">收起 ▸</span>
+    </footer>
+
+    <div id="toast" class="toast"></div>
+  </body>
+</html>
