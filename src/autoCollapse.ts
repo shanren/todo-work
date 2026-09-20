@@ -32,7 +32,10 @@ export function createAutoCollapse(opts: AutoCollapseOpts): AutoCollapse {
         return;
       }
       // 时长在失焦时刻实时求值：设置面板改时长后无需重启即生效
-      const ms = typeof opts.timeoutMs === "function" ? opts.timeoutMs() : opts.timeoutMs;
+      const ms =
+        typeof opts.timeoutMs === "function"
+          ? opts.timeoutMs()
+          : opts.timeoutMs;
       timer = setTimeout(() => {
         timer = null;
         opts.onTimeout();
