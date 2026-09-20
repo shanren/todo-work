@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo 工具 · 界面风格样例</title>
+<style>
+  :root { color-scheme: light; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI Variable", "Segoe UI", -apple-system, "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    /* 模拟桌面壁纸，让小窗更接近真实摆放效果 */
+    background: linear-gradient(135deg, #2b3a67 0%, #3e5c76 40%, #6b8f9c 70%, #a8c5d6 100%);
+    min-height: 100vh;
+    padding: 48px 40px 80px;
+  }
+  .page-title { color: #fff; text-align: center; margin-bottom: 8px; font-size: 22px; font-weight: 600; letter-spacing: 1px; text-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .page-sub { color: rgba(255,255,255,.75); text-align: center; margin-bottom: 48px; font-size: 13px; }
+  .row { display: flex; gap: 56px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; }
+  .col h2 { color: #fff; font-size: 15px; font-weight: 600; margin-bottom: 6px; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .col p { color: rgba(255,255,255,.7); font-size: 12px; margin-bottom: 20px; max-width: 340px; text-align: center; line-height: 1.6; }
+
+  /* ===== 通用小窗骨架：340px 宽，右上角比例 ===== */
+  .widget { width: 340px; border-radius: 16px; overflow: hidden; user-select: none; }
+  .w-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 4px; }
+  .w-date { font-size: 17px; font-weight: 700; }
+  .w-week { font-size: 12px; font-weight: 400; opacity: .55; margin-left: 6px; }
+  .w-actions { display: flex; gap: 10px; opacity: .45; font-size: 14px; }
+  .chips { display: flex; gap: 6px; padding: 10px 16px 8px; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex-shrink: 0; font-size: 12px; padding: 4px 11px; border-radius: 999px; cursor: default; transition: all .15s; display: flex; align-items: center; gap: 5px; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .items { padding: 2px 8px 6px; }
+  .item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 8px; border-radius: 10px; position: relative; transition: background .15s; cursor: default; }
+  .item:hover { background: rgba(120,120,140,.08); }
+  .item .bar { position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; }
+  .cb { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; border: 1.6px solid #b8b8c2; margin-top: 1px; cursor: pointer; transition: all .18s; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 11px; }
+  .item.done .cb { background: #34c759; border-color: #34c759; color: #fff; }
+  .it-main { flex: 1; min-width: 0; }
+  .it-title { font-size: 13.5px; line-height: 1.45; }
+  .item.done .it-title { text-decoration: line-through; opacity: .4; }
+  .it-meta { font-size: 11px; opacity: .45; margin-top: 2px; display: flex; gap: 8px; align-items: center; }
+  .it-meta .over { color: #e5484d; opacity: 1; font-weight: 500; }
+  .it-del { opacity: 0; font-size: 12px; padding: 2px 5px; border-radius: 6px; transition: opacity .15s; margin-top: 1px; }
+  .item:hover .it-del { opacity: .5; }
+  .it-del:hover { opacity: 1 !important; background: rgba(229,72,77,.12); color: #e5484d; }
+  .add { display: flex; align-items: center; gap: 8px; margin: 6px 12px 12px; padding: 9px 12px; border-radius: 10px; font-size: 13px; opacity: .5; cursor: text; }
+  .foot { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px 12px; font-size: 11px; opacity: .5; }
+  .prog { width: 64px; height: 3px; border-radius: 2px; background: rgba(128,128,128,.25); overflow: hidden; }
+  .prog i { display: block; height: 100%; background: #34c759; }
+  .sect-label { font-size: 11px; font-weight: 600; letter-spacing: .5px; padding: 6px 16px 2px; text-transform: uppercase; }
+
+  /* ================= 样式 A：毛玻璃 · macOS 风 ================= */
+  .glass {
+    background: rgba(250, 250, 252, .72);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    border: 1px solid rgba(255,255,255,.6);
+    box-shadow: 0 12px 40px rgba(15,25,50,.35), 0 2px 8px rgba(15,25,50,.15);
+    color: #1d1d1f;
+  }
+  .glass .chip { background: rgba(120,120,140,.1); color: #3a3a3f; }
+  .glass .chip.on { background: #1d1d1f; color: #fff; }
+  .glass .add { background: rgba(120,120,140,.1); }
+
+  /* ================= 样式 B：极简纸感 · Things/Notion 风 ================= */
+  .paper {
+    background: #ffffff;
+    border: 1px solid #e8e8ec;
+    box-shadow: 0 14px 44px rgba(20,30,60,.28);
+    color: #26262b;
+  }
+  .paper .chip { background: #f4f4f6; color: #55555e; border: 1px solid transparent; }
+  .paper .chip.on { background: #fff; border-color: #3b82f6; color: #3b82f6; font-weight: 600; }
+  .paper .item { border-bottom: 1px solid #f3f3f5; border-radius: 0; }
+  .paper .item:last-child { border-bottom: none; }
+  .paper .add { background: #f7f7f9; border: 1px dashed #dcdce2; }
+  .paper .cb { border-width: 1.4px; }
+  .paper .cb:hover { border-color: #3b82f6; }
+  .paper .sect-label { color: #9a9aa4; }
+
+  /* ================= 样式 C：暗夜 · 深色优雅 ================= */
+  .dark {
+    background: rgba(28, 28, 32, .92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 14px 44px rgba(0,0,0,.5);
+    color: #ececf1;
+  }
+  .dark .chip { background: rgba(255,255,255,.07); color: #b9b9c3; }
+  .dark .chip.on { background: rgba(255,255,255,.14); color: #fff; }
+  .dark .item:hover { background: rgba(255,255,255,.05); }
+  .dark .cb { border-color: #55555f; }
+  .dark .item.done .cb { background: #30d158; border-color: #30d158; }
+  .dark .add { background: rgba(255,255,255,.06); color: #b9b9c3; }
+  .dark .prog { background: rgba(255,255,255,.12); }
+  .dark .sect-label { color: #77777f; }
+
+  .note { margin-top: 14px; color: rgba(255,255,255,.55); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">界面风格样例 · 三选一（或混搭）</div>
+<div class="page-sub">均为 340px 实际宽度 · 可勾选体验 · 三个方向都能融入深/浅壁纸</div>
+
+<div class="row">
+
+  <!-- ================= 样式 A ================= -->
+  <div class="col">
+    <h2>A · 毛玻璃质感（macOS 风）</h2>
+    <p>半透明模糊背景，随壁纸变色，最"现代"。适合把窗口常驻桌面的场景，与系统融合度最高。参考：macOS 控制中心 / Things 3。</p>
+    <div class="widget glass">
+      <div class="w-head">
+        <div class="w-date">5月28日<span class="w-week">星期三</span></div>
+        <div class="w-actions">⚙ ⛶</div>
+      </div>
+      <div class="chips">
+        <span class="chip on">全部</span>
+        <span class="chip"><span class="dot" style="background:#3b82f6"></span>工作</span>
+        <span class="chip"><span class="dot" style="background:#f59e0b"></span>生活</span>
+        <span class="chip"><span class="dot" style="background:#10b981"></span>学习</span>
+        <span class="chip">＋</span>
+      </div>
+      <div class="sect-label">已过期</div>
+      <div class="items">
+        <div class="item">
+          <span class="bar" style="background:#e5484d"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">回复合作方的邮件</div>
+            <div class="it-meta"><span class="over">昨天到期</span><span>工作</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+      </div>
+      <div class="sect-label">今天</div>
+      <div class="items">
+        <div class="item">
+          <span class="bar" style="background:#3b82f6"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">整理季度汇报大纲</div>
+            <div class="it-meta"><span>14:00</span><span>工作</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+        <div class="item">
+          <span class="bar" style="background:#10b981"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">阅读《设计心理学》第 3 章</div>
+            <div class="it-meta"><span>学习</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+        <div class="item done">
+          <span class="bar" style="background:#f59e0b"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">晨间跑步 30 分钟</div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+      </div>
+      <div class="add">＋ 添加待办，回车确认</div>
+      <div class="foot"><span>今日 2/4</span><div class="prog"><i style="width:50%"></i></div><span>收起 ▸</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 样式 B ================= -->
+  <div class="col">
+    <h2>B · 极简纸感（Things / Notion 风）</h2>
+    <p>纯白底、细分隔线、单一强调色。信息密度最高、最耐看，长时间使用最不容易腻。参考：Things 3 / Notion 日历。</p>
+    <div class="widget paper">
+      <div class="w-head">
+        <div class="w-date">5月28日<span class="w-week">星期三</span></div>
+        <div class="w-actions">⚙ ⛶</div>
+      </div>
+      <div class="chips">
+        <span class="chip on">全部</span>
+        <span class="chip"><span class="dot" style="background:#3b82f6"></span>工作</span>
+        <span class="chip"><span class="dot" style="background:#f59e0b"></span>生活</span>
+        <span class="chip"><span class="dot" style="background:#10b981"></span>学习</span>
+        <span class="chip">＋</span>
+      </div>
+      <div class="sect-label">已过期</div>
+      <div class="items">
+        <div class="item">
+          <span class="bar" style="background:#e5484d"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">回复合作方的邮件</div>
+            <div class="it-meta"><span class="over">昨天到期</span><span>工作</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+      </div>
+      <div class="sect-label">今天</div>
+      <div class="items">
+        <div class="item">
+          <span class="bar" style="background:#3b82f6"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">整理季度汇报大纲</div>
+            <div class="it-meta"><span>14:00</span><span>工作</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+        <div class="item">
+          <span class="bar" style="background:#10b981"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">阅读《设计心理学》第 3 章</div>
+            <div class="it-meta"><span>学习</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+        <div class="item done">
+          <span class="bar" style="background:#f59e0b"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">晨间跑步 30 分钟</div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+      </div>
+      <div class="add">＋ 添加待办，回车确认</div>
+      <div class="foot"><span>今日 2/4</span><div class="prog"><i style="width:50%"></i></div><span>收起 ▸</span></div>
+    </div>
+  </div>
+
+  <!-- ================= 样式 C ================= -->
+  <div class="col">
+    <h2>C · 暗夜优雅（深色主题）</h2>
+    <p>深色毛玻璃，夜间/深色壁纸下最舒适，程序员审美友好。可与 A 共用结构，作为设置里的主题切换项。</p>
+    <div class="widget dark">
+      <div class="w-head">
+        <div class="w-date">5月28日<span class="w-week">星期三</span></div>
+        <div class="w-actions">⚙ ⛶</div>
+      </div>
+      <div class="chips">
+        <span class="chip on">全部</span>
+        <span class="chip"><span class="dot" style="background:#3b82f6"></span>工作</span>
+        <span class="chip"><span class="dot" style="background:#f59e0b"></span>生活</span>
+        <span class="chip"><span class="dot" style="background:#10b981"></span>学习</span>
+        <span class="chip">＋</span>
+      </div>
+      <div class="sect-label">已过期</div>
+      <div class="items">
+        <div class="item">
+          <span class="bar" style="background:#e5484d"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">回复合作方的邮件</div>
+            <div class="it-meta"><span class="over">昨天到期</span><span>工作</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+      </div>
+      <div class="sect-label">今天</div>
+      <div class="items">
+        <div class="item">
+          <span class="bar" style="background:#3b82f6"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">整理季度汇报大纲</div>
+            <div class="it-meta"><span>14:00</span><span>工作</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+        <div class="item">
+          <span class="bar" style="background:#10b981"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">阅读《设计心理学》第 3 章</div>
+            <div class="it-meta"><span>学习</span></div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+        <div class="item done">
+          <span class="bar" style="background:#f59e0b"></span>
+          <span class="cb">✓</span>
+          <div class="it-main">
+            <div class="it-title">晨间跑步 30 分钟</div>
+          </div>
+          <span class="it-del">✕</span>
+        </div>
+      </div>
+      <div class="add">＋ 添加待办，回车确认</div>
+      <div class="foot"><span>今日 2/4</span><div class="prog"><i style="width:50%"></i></div><span>收起 ▸</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 轻交互：勾选/取消完成
+  document.querySelectorAll('.cb').forEach(cb => {
+    cb.addEventListener('click', () => cb.closest('.item').classList.toggle('done'));
+  });
+</script>
+</body>
+</html>
